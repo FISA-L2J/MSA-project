@@ -8,7 +8,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 프로젝트입니
 | --- | --- | --- |
 | **[auth-service](./auth-service)** | 사용자 인증 및 JWT 토큰 발급/검증 | 8082 |
 | **order-service** | 주문 처리 (개발 예정) | - |
-| **payment-service** | 결제 처리 (개발 예정) | - |
+| **[payment-service](./payment-service)** | 결제 처리 | 8081 |
 
 ## Auth Service
 `auth-service`는 사용자의 로그인 요청을 받아 DB(`users` 테이블)에서 검증 후 JWT 토큰을 발급합니다.
