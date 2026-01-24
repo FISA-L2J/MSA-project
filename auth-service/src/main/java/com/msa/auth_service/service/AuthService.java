@@ -15,6 +15,8 @@ public class AuthService {
 
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final com.msa.auth_service.util.RedisUtil redisUtil;
 
     public String login(String username, String password) {
 
@@ -22,10 +24,7 @@ public class AuthService {
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            // TODO: In production, assume password in DB is encrypted (e.g. BCrypt) and use
-            // checks.
-            // For MVP, we compare plaintext as requested.
-            if (user.getPassword().equals(password)) {
+            if (user.checkPassword(password, passwordEncoder)) {
                 return jwtProvider.createToken(String.valueOf(user.getId()));
             }
         }
@@ -33,7 +32,17 @@ public class AuthService {
         throw new IllegalArgumentException("Invalid credentials");
     }
 
+    public void logout(String token) {
+        long expiration = jwtProvider.getExpiration(token);
+        if (expiration > 0) {
+            redisUtil.setBlackList(token, "logout", expiration / (1000 * 60));
+        }
+    }
+
     public String validate(String token) {
+        if (redisUtil.hasKeyBlackList(token)) {
+            throw new IllegalArgumentException("Logged out token");
+        }
         if (jwtProvider.validateToken(token)) {
             return jwtProvider.getUserId(token);
         }

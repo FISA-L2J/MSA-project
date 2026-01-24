@@ -29,4 +29,9 @@ public class User {
         this.password = password;
         this.role = role;
     }
+
+    public boolean checkPassword(String rawPassword,
+            org.springframework.security.crypto.password.PasswordEncoder encoder) {
+        return encoder.matches(rawPassword, this.password);
+    }
 }
