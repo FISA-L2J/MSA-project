@@ -4,18 +4,23 @@ server:
 spring:
   application:
     name: auth-service
+  
+  jwt:
+    secret: ${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}
+    expiration: 3600000 # 1 hour
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT}/${POSTGRES_DB}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:msa_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
     hibernate:
       ddl-auto: update
     show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
 
 # 관측성(Zipkin) 설정
 management:
@@ -24,7 +29,7 @@ management:
       probability: 1.0 # 100% 추적 (데모용)
   zipkin:
     tracing:
-      endpoint: "http://localhost:${ZIPKIN_PORT}/api/v2/spans"
+      endpoint: "http://localhost:${ZIPKIN_PORT:9411}/api/v2/spans"
   endpoints:
     web:
       exposure:
