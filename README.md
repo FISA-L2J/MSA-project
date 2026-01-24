@@ -7,13 +7,14 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 ### Infrastructure
 - **RDBMS**: PostgreSQL (각 서비스별 Database 분리)
+- **Cache**: Redis (Auth Service 토큰 관리)
 - **Tracing**: Zipkin (분산 트레이싱 시각화)
 - **Container**: Docker (DB 및 인프라 실행 위주)
 
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
 | --- | --- | --- | --- |
-| **Auth Service** | Spring Boot, JWT, Redis | 사용자 가입/로그인, 토큰 발급 및 검증 | 8082 |
+| **Auth Service** | Spring Security, JWT, Redis | 사용자 가입/로그인/로그아웃, 토큰 발급 및 검증 | 8082 |
 | **Order Service** | Spring Boot, OpenFeign, Resilience4j | 주문 생성, 결제 요청(Client), 서킷 브레이커 | 8080 |
 | **Payment Service** | Spring Boot, JPA | 결제 승인/거절 처리 | 8081 |
 
@@ -33,19 +34,17 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
     "password": "password"
   }
   ```
-- **Response**:
-  ```json
-  {
-    "accessToken": "eyJhbGcV...",
-    "tokenType": "Bearer",
-    "expiresIn": 3600
-  }
-  ```
+- **Response**: `200 OK` (Token Return)
+
+#### 로그아웃
+- **URL**: `POST /auth/logout`
+- **Header**: `Authorization: Bearer <Token>`
+- **Description**: 토큰을 Redis 블랙리스트에 등록하여 남은 유효기간 동안 무효화
 
 #### 토큰 검증
 - **URL**: `GET /auth/validate`
 - **Query Param**: `?token={accessToken}`
-- **Response**: `200 OK` (Body: "Valid Token for user: {userId}")
+- **Response**: `200 OK` (Valid), `401 Unauthorized` (Invalid/Blacklisted)
 
 ---
 
@@ -107,9 +106,10 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 ## 🚀 실행 방법 (Getting Started)
 
 ### 1. 인프라 실행 (Docker)
-프로젝트 루트에서 `docker-compose` 또는 개별 컨테이너 실행 명령어를 사용해 Postgres와 Zipkin을 실행합니다. (현재 `.env` 파일 참조)
+프로젝트 루트에서 `docker-compose`를 사용하여 인프라를 실행합니다.
 
 ```bash
+docker-compose up -d
 docker ps
 # Postgres(5432), Zipkin(9411), Redis(6379) 확인
 ```
@@ -127,6 +127,5 @@ cd order-service
 ### 3. 전체 흐름 테스트 (Scenario)
 1. **Auth**: `POST /auth/login`으로 토큰 획득 (userId=1)
 2. **Order**: 획득한 토큰을 헤더에 넣고 `POST /order` 요청
-3. **Internal**: `Order Service`가 `Payment Service`를 FeignClient로 호출
-4. **Result**: 주문 상태가 `COMPLETED`로 반환되면 성공
-5. **Tracing**: `http://localhost:9411` (Zipkin) 접속 후 트레이싱 확인
+3. **Logout**: `POST /auth/logout`으로 토큰 무효화
+3. **Verify**: 무효화된 토큰으로 API 호출 시 `401` 에러 확인

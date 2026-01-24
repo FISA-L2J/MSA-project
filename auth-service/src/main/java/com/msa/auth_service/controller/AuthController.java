@@ -18,23 +18,23 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        try {
-            String token = authService.login(request.getUsername(), request.getPassword());
-            log.info("Login successful for user: {}", request.getUsername());
-            return ResponseEntity.ok(new TokenResponse(token, "Bearer", 3600L));
-        } catch (IllegalArgumentException e) {
-            log.warn("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(401).body(e.getMessage());
+        String token = authService.login(request.getUsername(), request.getPassword());
+        log.info("Login successful for user: {}", request.getUsername());
+        return ResponseEntity.ok(new TokenResponse(token, "Bearer", 3600L));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        authService.logout(token);
+        return ResponseEntity.ok("Logged out successfully");
     }
 
     @GetMapping("/validate")
     public ResponseEntity<String> validate(@RequestParam String token) {
-        try {
-            String userId = authService.validate(token);
-            return ResponseEntity.ok("Valid Token for user: " + userId);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+        String userId = authService.validate(token);
+        return ResponseEntity.ok("Valid Token for user: " + userId);
     }
 }
