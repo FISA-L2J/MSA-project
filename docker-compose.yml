@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # 분산 추적 시각화 (Zipkin)
+  zipkin:
+    image: openzipkin/zipkin:${ZIPKIN_TAG}
+    container_name: msa-zipkin
+    ports:
+      - "${ZIPKIN_PORT}:9411"
+
+  # 데이터 저장소 (PostgreSQL)
+  postgres:
+    image: postgres:${POSTGRES_TAG}
+    container_name: msa-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+  # 인증용 캐시 (Redis)
+  redis:
+    image: redis:${REDIS_TAG}
+    container_name: msa-redis
+    ports:
+      - "${REDIS_PORT}:6379"
