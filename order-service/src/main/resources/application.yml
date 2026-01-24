@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  jwt:
+    secret: ${JWT_SECRET}
   application:
     name: order-service
   datasource:
@@ -30,3 +32,19 @@ management:
     web:
       exposure:
         include: health, info, prometheus
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5 # 최근 5개 요청 기준 (테스트용 소규모)
+        minimumNumberOfCalls: 2 # 최소 2개 요청부터 집계
+        failureRateThreshold: 50 # 실패율 50% 이상 시 서킷 오픈
+        waitDurationInOpenState: 10s # Open -> Half-Open 전환 대기 시간
+        permittedNumberOfCallsInHalfOpenState: 2 # Half-Open 상태에서 허용할 요청 수
+        automaticTransitionFromOpenToHalfOpenEnabled: true # 대기 시간 후 자동으로 Half-Open 전환
+    instances:
+      paymentService:
+        baseConfig: default

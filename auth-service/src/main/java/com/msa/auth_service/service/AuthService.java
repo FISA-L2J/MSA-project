@@ -26,7 +26,7 @@ public class AuthService {
             // checks.
             // For MVP, we compare plaintext as requested.
             if (user.getPassword().equals(password)) {
-                return jwtProvider.createToken(username);
+                return jwtProvider.createToken(String.valueOf(user.getId()));
             }
         }
 
