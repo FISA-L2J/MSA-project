@@ -1,0 +1,5 @@
+rootProject.name = 'MSA-project'
+
+include 'auth-service'
+include 'order-service'
+include 'payment-service'
