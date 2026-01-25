@@ -47,7 +47,7 @@ jobs:
             # We use sudo because the user might need it (though we added to docker group in starup script)
             # Re-login to ensure group membership applies if session is fresh
             
-            docker compose pull
-            docker compose up -d
-            docker system prune -f
+            sudo docker compose pull
+            sudo docker compose up -d
+            sudo docker system prune -f
           "
