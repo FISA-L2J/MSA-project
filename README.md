@@ -6,10 +6,13 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 ## 🏗 아키텍처 및 기술 스택
 
 ### Infrastructure
+- **Cloud**: Google Cloud Platform (Compute Engine, Artifact Registry)
+- **IaC**: Terraform (인프라 자동 프로비저닝)
+- **CI/CD**: GitHub Actions (자동 빌드 및 배포)
 - **RDBMS**: PostgreSQL (각 서비스별 Database 분리)
 - **Cache**: Redis (Auth Service 토큰 관리)
 - **Tracing**: Zipkin (분산 트레이싱 시각화)
-- **Container**: Docker (DB 및 인프라 실행 위주)
+- **Container**: Docker & Docker Compose
 
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
@@ -17,6 +20,35 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 | **Auth Service** | Spring Security, JWT, Redis | 사용자 가입/로그인/로그아웃, 토큰 발급 및 검증 | 8082 |
 | **Order Service** | Spring Boot, OpenFeign, Resilience4j | 주문 생성, 결제 요청(Client), 서킷 브레이커 | 8080 |
 | **Payment Service** | Spring Boot, JPA | 결제 승인/거절 처리 | 8081 |
+
+---
+
+## 🚀 배포 및 자동화 (Deployment & Automation)
+
+이 프로젝트는 **Terraform**으로 인프라를 생성하고, **GitHub Actions**로 자동 배포(CD)를 수행합니다.
+
+### 1. 인프라 생성 (Terraform)
+`/terraform` 디렉토리에서 GCP 리소스를 생성합니다.
+- **Artifact Registry**: Docker 이미지 저장소 (`msa-repo`)
+- **Compute Engine**: Docker가 설치된 VM (`msa-server`)
+- **Firewall**: 8080-8082, 9411 포트 개방
+
+```bash
+cd terraform
+# 초기화
+terraform init
+# 생성 (GCP 인증 필요)
+terraform apply
+```
+
+### 2. CI/CD 파이프라인 (GitHub Actions)
+- **CI (`*-service-ci.yml`)**:
+  - `main` 브랜치에 푸시되면 각 서비스별로 빌드 및 테스트를 수행합니다.
+  - Docker 이미지를 빌드하여 GCP Artifact Registry에 업로드합니다.
+- **CD (`deploy.yml`)**:
+  - **수동 실행 (Workflow Dispatch)** 방식입니다.
+  - VM에 SSH로 접속하여 최신 이미지를 받아오고(`docker compose pull`), 컨테이너를 재시작(`up -d`)합니다.
+  - 실행 시 GitHub Secrets에 저장된 환경변수(`db password` 등)를 안전하게 주입합니다.
 
 ---
 
@@ -36,7 +68,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 ## 📊 모니터링 (Monitoring)
 
 ### Zipkin Dashboard
-- **URL**: `http://localhost:9411`
+- **URL**: `http://<VM-Public-IP>:9411`
 - 분산 트레이싱을 통해 서비스 간의 호출 흐름과 지연 시간, **서킷 브레이커 동작(Error/Short Duration)** 을 시각적으로 확인할 수 있습니다.
 
 ---
@@ -135,10 +167,10 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 ---
 
-## 🚀 실행 방법 (Getting Started)
+## 🚀 로컬 실행 방법 (Local Development)
 
 ### 1. 인프라 실행 (Docker)
-프로젝트 루트에서 `docker-compose`를 사용하여 인프라를 실행합니다.
+프로젝트 루트에서 `docker-compose`를 사용하여 로컬 DB 등을 실행합니다.
 
 ```bash
 docker-compose up -d
@@ -164,9 +196,3 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc5
 POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc57bf7f1a8f4db0941c8bc842be8cb7c1f71c945c2bb7bcc523e262aef71b ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437 ./gradlew :order-service:bootRun
 ```
 *모든 서비스를 띄워야 전체 흐름 테스트가 가능합니다.*
-
-### 3. 전체 흐름 테스트 (Scenario)
-1. **Auth**: `POST /auth/login`으로 토큰 획득 (userId=1)
-2. **Order**: 획득한 토큰을 헤더에 넣고 `POST /order` 요청
-3. **Logout**: `POST /auth/logout`으로 토큰 무효화
-3. **Verify**: 무효화된 토큰으로 API 호출 시 `401` 에러 확인
