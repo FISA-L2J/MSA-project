@@ -1,0 +1,53 @@
+name: Auth Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'auth-service/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'auth-service/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./auth-service
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build with Gradle
+      run: ./gradlew build -x test
+
+    # Google Cloud Auth
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    # Setup gcloud & configure docker
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: 'Configure Docker'
+      run: |
+        gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+
+    - name: Build and Push Docker image
+      run: |
+        IMAGE_TAG=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/msa-repo/auth-service:latest
+        docker build . --file Dockerfile --tag $IMAGE_TAG
+        docker push $IMAGE_TAG

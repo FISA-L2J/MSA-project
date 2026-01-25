@@ -1,27 +1,90 @@
 version: '3.8'
 
 services:
-  # 분산 추적 시각화 (Zipkin)
+ 
   zipkin:
-    image: openzipkin/zipkin:${ZIPKIN_TAG}
+    image: openzipkin/zipkin:${ZIPKIN_TAG:-3}
     container_name: msa-zipkin
     ports:
-      - "${ZIPKIN_PORT}:9411"
+      - "${ZIPKIN_PORT:-9411}:9411"
+    restart: unless-stopped
 
-  # 데이터 저장소 (PostgreSQL)
   postgres:
-    image: postgres:${POSTGRES_TAG}
+    image: postgres:${POSTGRES_TAG:-15-alpine}
     container_name: msa-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
 
-  # 인증용 캐시 (Redis)
   redis:
-    image: redis:${REDIS_TAG}
+    image: redis:${REDIS_TAG:-7-alpine}
     container_name: msa-redis
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT:-6379}:6379"
+    restart: unless-stopped
+
+  # Application Services
+  auth-service:
+    image: asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID:-msa-project-prod}/msa-repo/auth-service:latest
+    # build: 
+    #   context: ./auth-service
+    #   dockerfile: Dockerfile
+    container_name: msa-auth-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-msa_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:${ZIPKIN_PORT:-9411}/api/v2/spans
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - postgres
+      - redis
+      - zipkin
+    restart: unless-stopped
+
+  order-service:
+    image: asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID:-msa-project-prod}/msa-repo/order-service:latest
+    # build: 
+    #   context: ./order-service
+    #   dockerfile: Dockerfile
+    container_name: msa-order-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-msa_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:${ZIPKIN_PORT:-9411}/api/v2/spans
+    depends_on:
+      - postgres
+      - zipkin
+    restart: unless-stopped
+
+  payment-service:
+    image: asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID:-msa-project-prod}/msa-repo/payment-service:latest
+    # build: 
+    #   context: ./payment-service
+    #   dockerfile: Dockerfile
+    container_name: msa-payment-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-msa_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:${ZIPKIN_PORT:-9411}/api/v2/spans
+    depends_on:
+      - postgres
+      - zipkin
+    restart: unless-stopped
