@@ -1,0 +1,53 @@
+name: Deploy to VM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: 'Create .env file'
+        run: |
+          echo "POSTGRES_TAG=15-alpine" > .env
+          echo "POSTGRES_USER=user" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "POSTGRES_DB=msa_db" >> .env
+          echo "POSTGRES_PORT=5432" >> .env
+          echo "ZIPKIN_TAG=3" >> .env
+          echo "ZIPKIN_PORT=9411" >> .env
+          echo "REDIS_TAG=7-alpine" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "ZIPKIN_TAG=3" >> .env
+          # Add Project ID for image pulling if referenced in docker-compose (not currently, but good practice)
+          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> .env
+
+      - name: 'Deploy to VM'
+        run: |
+          # 1. Copy docker-compose.yml and .env to VM
+          gcloud compute scp docker-compose.yml .env msa-server:~/ --zone=asia-northeast3-a
+
+          # 2. SSH to VM to run docker compose
+          gcloud compute ssh msa-server --zone=asia-northeast3-a --command="
+            # Configure Docker to use gcloud credentials
+            gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+            
+            # Pull latest images and restart containers
+            # We use sudo because the user might need it (though we added to docker group in starup script)
+            # Re-login to ensure group membership applies if session is fresh
+            
+            docker compose pull
+            docker compose up -d
+            docker system prune -f
+          "

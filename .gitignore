@@ -7,3 +7,9 @@
 
 application-secret.yml
 application-local.yml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
