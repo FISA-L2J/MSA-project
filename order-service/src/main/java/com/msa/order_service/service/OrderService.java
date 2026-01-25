@@ -26,6 +26,7 @@ public class OrderService {
     private final PaymentClient paymentClient;
 
     @Transactional
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "paymentFallback")
     public OrderResponse createOrder(OrderRequest request) {
         String authenticatedUserIdStr = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long authenticatedUserId = Long.parseLong(authenticatedUserIdStr);

@@ -1,6 +1,11 @@
 server:
   port: 8080
 
+logging:
+  level:
+    com.msa.order_service: DEBUG
+    com.msa.order_service.client.PaymentClient: DEBUG
+
 spring:
   jwt:
     secret: ${JWT_SECRET}

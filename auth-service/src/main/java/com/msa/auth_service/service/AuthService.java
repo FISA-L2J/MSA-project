@@ -18,6 +18,14 @@ public class AuthService {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final com.msa.auth_service.util.RedisUtil redisUtil;
 
+    public void signup(String username, String password) {
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        User user = new User(username, passwordEncoder.encode(password));
+        userRepository.save(user);
+    }
+
     public String login(String username, String password) {
 
         Optional<User> userOptional = userRepository.findByUsername(username);

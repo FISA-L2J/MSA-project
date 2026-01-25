@@ -16,6 +16,12 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/signup")
+    public ResponseEntity<String> signup(@RequestBody AuthRequest request) {
+        authService.signup(request.getUsername(), request.getPassword());
+        return ResponseEntity.ok("User registered successfully");
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
         String token = authService.login(request.getUsername(), request.getPassword());
