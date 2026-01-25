@@ -40,12 +40,11 @@ jobs:
 
           # 2. SSH to VM to run docker compose
           gcloud compute ssh msa-server --zone=asia-northeast3-a --command="
-            # Configure Docker to use gcloud credentials
-            gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+            # Authenticate Docker using Access Token (Works with sudo)
+            gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin https://asia-northeast3-docker.pkg.dev
             
             # Pull latest images and restart containers
-            # We use sudo because the user might need it (though we added to docker group in starup script)
-            # Re-login to ensure group membership applies if session is fresh
+            # We use sudo for reliable execution environment
             
             sudo docker compose pull
             sudo docker compose up -d
