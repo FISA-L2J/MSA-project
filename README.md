@@ -20,10 +20,42 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 ---
 
+## 🌟 핵심 기능 (Key Features)
+
+### 1. Token Propagation (토큰 전파)
+- **FeignClientInterceptor**를 통해 `Order Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Payment Service`로 전달합니다.
+- 이를 통해 마이크로서비스 간의 호출에서도 **사용자 인증 정보(User Context)가 끊기지 않고 유지**됩니다.
+
+### 2. Circuit Breaker (서킷 브레이커)
+- **Resilience4j**를 적용하여 `Payment Service` 장애 시 `Order Service`가 영향을 받지 않도록 격리합니다.
+- **Fail Fast**: 장애 감지 시 즉시 에러(또는 Fallback)를 반환하여 스레드 고갈을 방지합니다.
+- **Fallback**: 결제 서비스 다운 시, 주문을 '실패(FAILED)' 상태로 기록하되 시스템 오류(500)가 아닌 정상 응답으로 처리합니다.
+
+---
+
+## 📊 모니터링 (Monitoring)
+
+### Zipkin Dashboard
+- **URL**: `http://localhost:9411`
+- 분산 트레이싱을 통해 서비스 간의 호출 흐름과 지연 시간, **서킷 브레이커 동작(Error/Short Duration)** 을 시각적으로 확인할 수 있습니다.
+
+---
+
 ## 📚 API 명세서 (API Documentation)
 
 ### 1. Auth Service (Port: 8082)
 사용자 인증 및 JWT 토큰 관리
+
+#### 회원가입
+- **URL**: `POST /auth/signup`
+- **Request**:
+  ```json
+  {
+    "username": "user",
+    "password": "password"
+  }
+  ```
+- **Response**: `200 OK` ("User registered successfully") 
 
 #### 로그인
 - **URL**: `POST /auth/login`
@@ -115,12 +147,21 @@ docker ps
 ```
 
 ### 2. 서비스 실행
-각 서비스 디렉토리(`auth-service`, `order-service`, `payment-service`)로 이동하여 Spring Boot 애플리케이션을 실행합니다.
+ **중요**: 각 서비스는 루트 디렉토리(`MSA-project`)에서 아래 명령어로 실행해야 합니다. (환경변수 포함)
 
+#### Auth Service
 ```bash
-# 예시: Order Service 실행
-cd order-service
-./gradlew bootRun
+POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc57bf7f1a8f4db0941c8bc842be8cb7c1f71c945c2bb7bcc523e262aef71b ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437 ./gradlew :auth-service:bootRun
+```
+
+#### Payment Service
+```bash
+POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc57bf7f1a8f4db0941c8bc842be8cb7c1f71c945c2bb7bcc523e262aef71b ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437 ./gradlew :payment-service:bootRun
+```
+
+#### Order Service
+```bash
+POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc57bf7f1a8f4db0941c8bc842be8cb7c1f71c945c2bb7bcc523e262aef71b ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437 ./gradlew :order-service:bootRun
 ```
 *모든 서비스를 띄워야 전체 흐름 테스트가 가능합니다.*
 
