@@ -1,0 +1,15 @@
+.gradle
+**/build
+**/.idea
+**/*.iml
+**/.DS_Store
+.env
+
+application-secret.yml
+application-local.yml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
