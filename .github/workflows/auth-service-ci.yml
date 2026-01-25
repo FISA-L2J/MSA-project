@@ -13,9 +13,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./auth-service
 
     steps:
     - uses: actions/checkout@v3
@@ -30,7 +27,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew build -x test
+      run: ./gradlew :auth-service:build -x test
 
     # Google Cloud Auth
     - id: 'auth'
@@ -49,5 +46,5 @@ jobs:
     - name: Build and Push Docker image
       run: |
         IMAGE_TAG=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/msa-repo/auth-service:latest
-        docker build . --file Dockerfile --tag $IMAGE_TAG
+        cd auth-service && docker build . --file Dockerfile --tag $IMAGE_TAG
         docker push $IMAGE_TAG
