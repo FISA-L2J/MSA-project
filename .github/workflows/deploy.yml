@@ -3,7 +3,6 @@ name: Deploy to GKE
 on:
   push:
     branches:
-      - "refact/#6"
       - "main"
   workflow_dispatch:
 
