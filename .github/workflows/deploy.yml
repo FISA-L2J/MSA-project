@@ -38,12 +38,6 @@ jobs:
       run: |-
         gcloud auth configure-docker ${{ env.GAR_LOCATION }}
 
-    - name: Debug - List files
-      run: |
-        ls -la
-        ls -la auth-service/
-        cat .dockerignore
-
     # 4. Build and Push Images (Multi-stage builds)
     - name: Build and Push Auth Service
       uses: docker/build-push-action@v4
