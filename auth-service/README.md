@@ -9,7 +9,7 @@
 - **Database**: PostgreSQL (JPA/Hibernate)
 - **Security**: 
   - Spring Security (BCrypt Password Encoder)
-  - JWT (HS256)
+  - JWT (RS256) - RSA Asymmetric Key Pair
 - **Cache**: Redis (Token Blacklist)
 - **Monitoring**: Zipkin (Tracing)
 
@@ -27,7 +27,8 @@ docker-compose up -d
 ```
 실행 후 `http://localhost:8082`에서 서비스가 동작합니다.
 
-> **Note**: 초기 실행 시 `DataInitializer`가 테스트용 계정(`user` / `password`)을 자동으로 생성하며, 비밀번호는 BCrypt로 암호화되어 저장됩니다.
+> **Note**: 초기 실행 시 `DataInitializer`가 테스트용 계정(`user` / `password`)을 자동으로 생성합니다.
+> **Key Management**: 데모 목적상 **서버 시작 시 RSA 키 쌍(Public/Private Key)이 메모리에서 생성**됩니다. 재시작 시 이전 토큰은 무효화됩니다.
 
 ## API 명세
 
@@ -45,7 +46,7 @@ docker-compose up -d
 - **Response (200 OK)**:
   ```json
   {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessToken": "eyJhbGciOiJSUzI1NiJ9...", // Signed with RS256
     "tokenType": "Bearer",
     "expiresIn": 3600
   }
@@ -66,3 +67,23 @@ docker-compose up -d
 - **Query Parameter**: `token` (JWT 토큰)
 - **Response (200 OK)**: `Valid Token for user: {userId}`
 - **Response (401 Unauthorized)**: `Logged out token` or `Invalid Token`
+
+### 4. 공개키 조회 (JWKS)
+Istio 등 외부 서비스가 토큰 서명을 검증할 수 있도록 RSA 공개키를 제공합니다.
+
+- **URL**: `GET /.well-known/jwks.json`
+- **Response (200 OK)**:
+  ```json
+  {
+    "keys": [
+      {
+        "kty": "RSA",
+        "kid": "uuid-key-id",
+        "use": "sig",
+        "alg": "RS256",
+        "n": "...",
+        "e": "AQAB"
+      }
+    ]
+  }
+  ```
