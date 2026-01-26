@@ -1,18 +1,20 @@
-# MSA Project (FISA-L2J)
+# MSA Project (FISA-L2J) - Cloud Native Migration
 
 Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데모 프로젝트입니다.  
+기존 VM 기반 배포에서 **Kubernetes(GKE) 및 Istio Service Mesh** 환경으로 마이그레이션되었습니다.
+
 주문(Order), 결제(Payment), 인증(Auth) 서비스로 구성되어 있으며, 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
 
 ## 🏗 아키텍처 및 기술 스택
 
-### Infrastructure
-- **Cloud**: Google Cloud Platform (Compute Engine, Artifact Registry)
-- **IaC**: Terraform (인프라 자동 프로비저닝)
-- **CI/CD**: GitHub Actions (자동 빌드 및 배포)
-- **RDBMS**: PostgreSQL (각 서비스별 Database 분리)
+### Infrastructure (Cloud Native)
+- **Cloud**: Google Cloud Platform (GKE Standard Cluster, Artifact Registry)
+- **IaC**: Terraform (GKE Cluster & Node Pool 프로비저닝)
+- **Service Mesh**: Istio (Traffic Management, Ingress Gateway)
+- **CI/CD**: GitHub Actions (Docker Build -> Artifact Registry -> GKE Deploy)
+- **RDBMS**: PostgreSQL (GKE 내 StatefulSet, Logical DB 분리: `auth_db`, `order_db`, `payment_db`)
 - **Cache**: Redis (Auth Service 토큰 관리)
-- **Tracing**: Zipkin (분산 트레이싱 시각화)
-- **Container**: Docker & Docker Compose
+- **Tracing**: Zipkin (분산 트레이싱)
 
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
@@ -23,15 +25,19 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 ---
 
-## 🚀 배포 및 자동화 (Deployment & Automation)
+## 🚀 Cloud Native 배포 가이드 (GKE & Istio)
 
-이 프로젝트는 **Terraform**으로 인프라를 생성하고, **GitHub Actions**로 자동 배포(CD)를 수행합니다.
+이 프로젝트는 **Terraform**으로 GKE 클러스터를 생성하고, **GitHub Actions**로 자동 배포(CD)를 수행합니다.
+
+### 0. 사전 요구사항 (Prerequisites)
+로컬 또는 **Google Cloud Shell**(추천)에 다음 도구가 설치되어 있어야 합니다.
+- `gcloud` CLI
+- `kubectl`
+- `istioctl`
+- `terraform`
 
 ### 1. 인프라 생성 (Terraform)
-`/terraform` 디렉토리에서 GCP 리소스를 생성합니다.
-- **Artifact Registry**: Docker 이미지 저장소 (`msa-repo`)
-- **Compute Engine**: Docker가 설치된 VM (`msa-server`)
-- **Firewall**: 8080-8082, 9411 포트 개방
+`/terraform` 디렉토리에서 GKE 클러스터를 생성합니다. (기존 VM은 삭제됩니다)
 
 ```bash
 cd terraform
@@ -39,37 +45,58 @@ cd terraform
 terraform init
 # 생성 (GCP 인증 필요)
 terraform apply
+# 완료 후 출력되는 'get_credentials_command'를 실행하여 kubectl을 연결하세요.
+# 예: gcloud container clusters get-credentials msa-cluster ...
 ```
 
-### 2. CI/CD 파이프라인 (GitHub Actions)
-- **CI (`*-service-ci.yml`)**:
-  - `main` 브랜치에 푸시되면 각 서비스별로 빌드 및 테스트를 수행합니다.
-  - Docker 이미지를 빌드하여 GCP Artifact Registry에 업로드합니다.
-- **CD (`deploy.yml`)**:
-  - **수동 실행 (Workflow Dispatch)** 방식입니다.
-  - VM에 SSH로 접속하여 최신 이미지를 받아오고(`docker compose pull`), 컨테이너를 재시작(`up -d`)합니다.
-  - 실행 시 GitHub Secrets에 저장된 환경변수(`db password` 등)를 안전하게 주입합니다.
+### 2. Istio 설치 (Manual Step)
+클러스터 생성 후, Istio를 수동으로 설치해야 합니다.
+
+```bash
+# Istio 다운로드 및 설치
+curl -L https://istio.io/downloadIstio | sh -
+cd istio-*
+export PATH=$PWD/bin:$PATH
+istioctl install --set profile=demo -y
+```
+
+### 3. 애플리케이션 배포 (GitHub Actions)
+코드를 `main` 브랜치에 Push하면 GitHub Actions(`deploy.yml`)가 자동으로 실행됩니다.
+1. Docker 이미지 빌드 및 Artifact Registry 푸시
+2. GKE에 Kubernetes Manifests(`k8s/`) 배포 (Secret 자동 생성 포함)
+3. `Istio Gateway` 및 `VirtualService` 설정
+
+### 4. 접속 확인 및 모니터링
+Istio Ingress Gateway의 External IP를 확인하여 접속합니다.
+
+```bash
+kubectl get svc istio-ingressgateway -n istio-system
+# EXTERNAL-IP 확인 후: http://<EXTERNAL-IP>/orders
+```
+
+**Kiali 대시보드 (Service Mesh 시각화)**:
+```bash
+istioctl dashboard kiali
+```
 
 ---
 
 ## 🌟 핵심 기능 (Key Features)
 
-### 1. Token Propagation (토큰 전파)
+### 1. Istio Service Mesh
+- **Traffic Management**: `Istio Gateway`를 통해 모든 외부 트래픽을 단일 진입점으로 관리합니다.
+- **Sidecar Proxy**: 각 서비스 파드에 Envoy 프록시가 주입되어 트래픽을 가로채고 제어합니다.
+
+### 2. Token Propagation (토큰 전파)
 - **FeignClientInterceptor**를 통해 `Order Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Payment Service`로 전달합니다.
 - 이를 통해 마이크로서비스 간의 호출에서도 **사용자 인증 정보(User Context)가 끊기지 않고 유지**됩니다.
 
-### 2. Circuit Breaker (서킷 브레이커)
-- **Resilience4j**를 적용하여 `Payment Service` 장애 시 `Order Service`가 영향을 받지 않도록 격리합니다.
-- **Fail Fast**: 장애 감지 시 즉시 에러(또는 Fallback)를 반환하여 스레드 고갈을 방지합니다.
-- **Fallback**: 결제 서비스 다운 시, 주문을 '실패(FAILED)' 상태로 기록하되 시스템 오류(500)가 아닌 정상 응답으로 처리합니다.
+### 3. Resilience (회복 탄력성)
+- **Circuit Breaker**: `Payment Service` 장애 시 `Order Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Order Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
 
----
-
-## 📊 모니터링 (Monitoring)
-
-### Zipkin Dashboard
-- **URL**: `http://<VM-Public-IP>:9411`
-- 분산 트레이싱을 통해 서비스 간의 호출 흐름과 지연 시간, **서킷 브레이커 동작(Error/Short Duration)** 을 시각적으로 확인할 수 있습니다.
+### 4. Database Isolation
+- 단일 PostgreSQL 파드 내에서 `auth_db`, `order_db`, `payment_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
+- `k8s/secret.yaml`을 통해 DB 자격증명을 안전하게 관리합니다.
 
 ---
 
@@ -201,59 +228,36 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc5
 
 ## 🛠️ 트러블 슈팅 (Troubleshooting)
 
-### 1. Cloud & Infrastructure (GCP, Terraform)
+### 1. Cloud & Infrastructure (GKE, Terraform)
 
-#### 🔴 GCP Permission Denied (403)
+#### 🔴 GCP IAM Permission Denied (403)
 - **Issue**: `Artifact Registry` 리소스 생성 중 403 Forbidden 에러.
-- **Cause**: 서비스 계정에 `Compute Admin` 권한은 있었으나, `Artifact Registry Administrator` 권한이 누락됨.
-- **Solution**: GCP Console IAM 설정에서 서비스 계정에 **Artifact Registry 관리자** 역할 추가.
+- **Solution**: 서비스 계정에 **Artifact Registry 관리자**(이미지 푸시용) 및 **Kubernetes Engine 관리자**(클러스터 생성용) 권한 추가.
 
-### 2. Version Control (Git & GitHub)
+#### 🔴 Istio 설치 실패 (Connection Refused)
+- **Issue**: Cloud Shell 세션 만료로 `kubectl` 컨텍스트 유실.
+- **Solution**: `gcloud container clusters get-credentials ...` 로 재연결 후 설치.
+
+#### 🔴 배포 후 Pod Pending
+- **Issue**: 노드 리소스 부족.
+- **Solution**: `kubectl describe pod` 확인. 현재 `e2-standard-2` 노드 2개(총 4 vCPU, 16GB)로 운영 중.
+
+### 2. Version Control & Build
 
 #### 🔴 Large File Push Error
-- **Issue**: `git push` 시 `.terraform` 폴더 내의 바이너리 파일(100MB+)로 인해 푸시 거부됨.
-- **Cause**: `.gitignore`에 Terraform 관련 설정이 없어서 로컬 바이너리가 커밋됨.
-- **Solution**:
-  1. `.gitignore`에 `.terraform/`, `*.tfstate` 등 추가.
-  2. `git reset HEAD^`로 커밋 취소 후 다시 스테이징(`git add`) 및 커밋.
+- **Issue**: Terraform 바이너리 등 대용량 파일이 커밋됨.
+- **Solution**: `.gitignore`에 `.terraform/` 추가 후 `git reset HEAD^`.
 
-#### 🔴 Personal Access Token (PAT) Scope
-- **Issue**: `refusing to allow a Personal Access Token to create or update workflow` 에러.
-- **Cause**: GitHub 인증 토큰에 `workflow` 스코프(권한)가 비활성화됨.
-- **Solution**: GitHub Developer Settings에서 토큰의 **Scopes**를 수정하여 `workflow` 항목 체크.
+#### 🔴 Gradle Wrapper Execution
+- **Issue**: 서브 모듈 디렉토리에서 `./gradlew` 실행 시 설정 누락.
+- **Solution**: 루트 디렉토리에서 `./gradlew :auth-service:bootRun` 형식으로 실행 권장.
 
-### 3. DevOps (Docker & CI/CD)
+### 3. Application Runtime
 
-#### 🔴 Docker Build Context
-- **Issue**: 로컬용 `docker-compose.yml`은 `build: context`를 사용하므로 소스 코드가 없는 프로덕션 환경(VM)에서 실행 불가.
-- **Solution**: CI 파이프라인에서 빌드한 이미지를 레지스트리(GCR)에 올리고, `docker-compose.yml`은 이미지를 당겨오도록(`image: ...`) 수정.
+#### 🔴 Missing Environment Variables
+- **Issue**: `InjectionMetadata` 에러 발생.
+- **Solution**: 환경변수(`JWT_SECRET` 등)를 실행 명령어에 포함하여 주입.
 
-### 4. Application Verification (Runtime & Logic)
-
-#### 🔴 Build Configuration - Redundant Plugin
-- **Issue**: `Order Service` 실행 시 빌드 실패.
-- **Cause**: 루트 프로젝트(`build.gradle`)의 `subprojects` 블록과 각 서비스의 `build.gradle`에 동일한 플러그인(`java`, `org.springframework.boot`)이 중복 선언됨.
-- **Solution**: 하위 모듈의 `build.gradle`에서 중복되는 플러그인 선언 제거.
-
-#### 🔴 Build Configuration - Version Mismatch
-- **Issue**: `Spring Boot 3.5.10` 버전 사용 시 `Spring Cloud`와의 호환성 문제로 빌드 실패.
-- **Cause**: `Spring Cloud` 릴리즈 트레인과 호환되지 않는 `Spring Boot` 버전을 사용하여 의존성 충돌 발생.
-- **Solution**: 호환성이 보장된 `Spring Boot 3.4.1`로 버전을 다운그레이드하여 해결.
-
-#### 🔴 Execution Context - Gradle Wrapper
-- **Issue**: `auth-service` 디렉토리 내부에서 `./gradlew bootRun` 실행 시 빌드 실패.
-- **Cause**: 루트 프로젝트에 정의된 공통 설정(플러그인, 의존성 등)을 읽지 못하고 서브 모듈을 독립 프로젝트로 인식함.
-- **Solution**: 반드시 **루트 디렉토리(`MSA-project`)** 에서 `:auth-service:bootRun` 형태로 실행하도록 가이드 수정.
-
-#### 🔴 Runtime - Missing Environment Variables
-- **Issue**: 애플리케이션 실행 중 `InjectionMetadata` 관련 에러 발생.
-- **Cause**: `JWT_SECRET`, `POSTGRES_USER` 등 필수 환경변수가 터미널 세션에 설정되지 않음.
-- **Solution**: 실행 명령어에 필요한 모든 환경변수(`export ...`)를 포함하여 한 줄로 실행하도록 스크립트 제공.
-
-#### 🔴 Logic - Missing Endpoint & Malformed Token
-- **Issue 1**: 회원가입 요청 시 `404 Not Found`.
-  - **Cause**: `Auth Service`에 `/auth/signup` 엔드포인트가 아예 구현되어 있지 않았음.
-  - **Solution**: `AuthService` 및 `AuthController`에 회원가입 로직 추가 구현.
-- **Issue 2**: 주문 요청 시 `403 Forbidden`.
-  - **Cause**: `Authorization` 헤더에 JWT 토큰 문자열만 넣어야 하는데, JSON 응답 전체(`{"accessToken":...}`)를 넣음.
-  - **Solution**: `curl` 및 `python` 파싱을 통해 `accessToken` 값만 정확히 추출하여 헤더에 주입.
+#### 🔴 Authorization 403 (Malformed Token)
+- **Issue**: 헤더에 JSON 전체를 넣어서 인증 실패.
+- **Solution**: `Bearer <Pure_Access_Token>` 형식으로 정확한 토큰 값만 전송.

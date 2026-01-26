@@ -5,78 +5,45 @@ provider "google" {
 }
 
 # 1. Artifact Registry (Store Docker Images)
+# Keep this as is
 resource "google_artifact_registry_repository" "msa_repo" {
   location      = var.region
-  repository_id = "msa-repo" // Repository Name
+  repository_id = "msa-repo"
   description   = "Docker repository for MSA project"
   format        = "DOCKER"
 }
 
-# 2. Firewall Rules
-resource "google_compute_firewall" "msa_firewall" {
-  name    = "allow-msa-ports"
-  network = "default"
+# 2. GKE Cluster
+resource "google_container_cluster" "primary" {
+  name     = "msa-cluster"
+  location = var.zone  # Zonal cluster is cheaper than Regional
 
-  allow {
-    protocol = "tcp"
-    ports    = ["22", "8080", "8081", "8082", "9411"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["msa-server"]
+  # We can't create a cluster with no node pool defined, but we want to only use separately managed node pools.
+  # So we create the smallest possible default node pool and immediately delete it.
+  remove_default_node_pool = true
+  initial_node_count       = 1
 }
 
-# 3. Compute Engine Instance (VM)
-resource "google_compute_instance" "msa_server" {
-  name         = "msa-server"
-  machine_type = "e2-standard-2" # 2 vCPU, 8GB RAM (Adjust as needed)
-  tags         = ["msa-server", "http-server", "https-server"]
+# 3. Managed Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  name       = "msa-node-pool"
+  location   = var.zone
+  cluster    = google_container_cluster.primary.name
+  node_count = 2 # 2 Nodes for High Availability (minimum)
 
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 20
-    }
+  node_config {
+    preemptible  = true # Cheaper, good for learning/testing
+    machine_type = "e2-standard-2" # 2 vCPU, 8GB RAM
+
+    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
   }
-
-  network_interface {
-    network = "default"
-    access_config {
-      # Allocate a public IP
-    }
-  }
-
-  service_account {
-    # Allow the VM to pull images from Artifact Registry
-    scopes = ["cloud-platform"]
-  }
-
-  metadata_startup_script = <<-EOF
-    #!/bin/bash
-    # Update and install Docker
-    apt-get update
-    apt-get install -y ca-certificates curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-
-    echo \
-      "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-      tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    # Enable Docker service
-    systemctl enable docker
-    systemctl start docker
-    
-    # Allow current user to run docker commands (optional, helpful for debugging)
-    usermod -aG docker ubuntu
-  EOF
 }
 
-output "vm_public_ip" {
-  value = google_compute_instance.msa_server.network_interface[0].access_config[0].nat_ip
+# 4. Output for K8s Connection
+output "get_credentials_command" {
+  value = "gcloud container clusters get-credentials ${google_container_cluster.primary.name} --zone ${var.zone} --project ${var.project_id}"
+  description = "Command to configure kubectl"
 }
