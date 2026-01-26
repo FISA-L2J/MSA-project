@@ -228,6 +228,14 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc5
 - **Issue**: 로컬용 `docker-compose.yml`은 `build: context`를 사용하므로 소스 코드가 없는 프로덕션 환경(VM)에서 실행 불가.
 - **Solution**: CI 파이프라인에서 빌드한 이미지를 레지스트리(GCR)에 올리고, `docker-compose.yml`은 이미지를 당겨오도록(`image: ...`) 수정.
 
+#### 🔴 Docker Sudo Authentication
+- **Issue**: `sudo docker pull` 실행 시 권한 에러 발생 (credential helper가 root에 적용 안 됨).
+- **Cause**: GCP `gcloud auth configure-docker`는 현재 유저에게만 적용됨.
+- **Solution**: `deploy.yml`에서 Access Token을 직접 추출하여 로그인하는 방식으로 변경.
+  ```yaml
+  gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin https://asia-northeast3-docker.pkg.dev
+  ```
+
 ### 4. Application Verification (Runtime & Logic)
 
 #### 🔴 Build Configuration - Redundant Plugin
