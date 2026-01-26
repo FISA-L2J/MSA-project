@@ -19,7 +19,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
 | --- | --- | --- | --- |
-| **Auth Service** | Spring Security, JWT, Redis | 사용자 가입/로그인/로그아웃, 토큰 발급 및 검증 | 8082 |
+| **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 | 8082 |
 | **Order Service** | Spring Boot, OpenFeign, Resilience4j | 주문 생성, 결제 요청(Client), 서킷 브레이커 | 8080 |
 | **Payment Service** | Spring Boot, JPA | 결제 승인/거절 처리 | 8081 |
 

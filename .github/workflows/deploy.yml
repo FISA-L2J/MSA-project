@@ -99,6 +99,9 @@ jobs:
         kubectl apply -f k8s/order-service.yaml
         kubectl apply -f k8s/payment-service.yaml
 
+        # Apply Istio Auth Policy
+        kubectl apply -f k8s/istio-auth.yaml
+
         # Force Rolling Restart (to pick up new 'latest' images)
         kubectl rollout restart deployment/auth-service -n msa-project
         kubectl rollout restart deployment/order-service -n msa-project
