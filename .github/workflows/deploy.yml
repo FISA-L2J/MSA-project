@@ -1,55 +1,103 @@
-name: Deploy to VM
+name: Deploy to GKE
 
 on:
+  push:
+    branches:
+      - "refact/#6"
+      - "main"
   workflow_dispatch:
 
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: msa-cluster
+  GKE_ZONE: asia-northeast3-a
+  GAR_LOCATION: asia-northeast3-docker.pkg.dev
+
 jobs:
-  deploy:
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
     runs-on: ubuntu-latest
+    environment: production
+
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v1'
-        with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+    # 1. Authenticate to Google Cloud
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
+    # 2. Setup GCloud SDK
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
 
-      - name: 'Create .env file'
-        run: |
-          echo "POSTGRES_TAG=15-alpine" > .env
-          echo "POSTGRES_USER=user" >> .env
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-          echo "POSTGRES_DB=msa_db" >> .env
-          echo "POSTGRES_PORT=5432" >> .env
-          echo "ZIPKIN_TAG=3" >> .env
-          echo "ZIPKIN_PORT=9411" >> .env
-          echo "REDIS_TAG=7-alpine" >> .env
-          echo "REDIS_PORT=6379" >> .env
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-          echo "ZIPKIN_TAG=3" >> .env
-          # Add Project ID for image pulling if referenced in docker-compose (not currently, but good practice)
-          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> .env
+    # 3. Configure Docker to use GCloud as credential helper
+    - name: 'Docker auth'
+      run: |-
+        gcloud auth configure-docker ${{ env.GAR_LOCATION }}
 
-      - name: 'Deploy to VM'
-        run: |
-          # 1. Copy docker-compose.yml and .env to VM
-          gcloud compute scp docker-compose.yml .env msa-server:~/ --zone=asia-northeast3-a
+    # 4. Build and Push Images (Multi-stage builds)
+    - name: Build and Push Auth Service
+      uses: docker/build-push-action@v4
+      with:
+        context: ./auth-service
+        push: true
+        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/auth-service:latest
 
-          # 2. SSH to VM to run docker compose
-          gcloud compute ssh msa-server --zone=asia-northeast3-a --command="
-            # Authenticate Docker using Access Token (Works with sudo)
-            gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin https://asia-northeast3-docker.pkg.dev
-            
-            # Pull latest images and restart containers
-            # We use sudo for reliable execution environment
-            
-            sudo docker compose pull
-            sudo docker compose up -d
-            
-            # Wait for a moment to see if they stay up
-            sleep 10
-            sudo docker ps -a
-          "
+    - name: Build and Push Order Service
+      uses: docker/build-push-action@v4
+      with:
+        context: ./order-service
+        push: true
+        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/order-service:latest
+
+    - name: Build and Push Payment Service
+      uses: docker/build-push-action@v4
+      with:
+        context: ./payment-service
+        push: true
+        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/payment-service:latest
+
+    # 5. Authenticate to GKE
+    - name: Get GKE Credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: ${{ env.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+
+    # 6. Deploy Secrets (Dynamic Creation)
+    - name: Create Secrets
+      run: |
+        # Create namespace first to put secret in it
+        kubectl apply -f k8s/namespace.yaml
+        
+        # Create Secret idempotently
+        kubectl create secret generic msa-secrets \
+          --namespace=msa-project \
+          --from-literal=postgres-user=user \
+          --from-literal=postgres-password=${{ secrets.POSTGRES_PASSWORD }} \
+          --from-literal=jwt-secret=${{ secrets.JWT_SECRET }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    # 7. Deploy Applications
+    - name: Deploy to GKE
+      run: |
+        # Apply ConfigMaps (DB Init)
+        kubectl apply -f k8s/postgres-init.yaml
+
+        # Apply Infrastructure
+        kubectl apply -f k8s/postgres.yaml
+        kubectl apply -f k8s/redis.yaml
+        kubectl apply -f k8s/zipkin.yaml
+
+        # Apply Services
+        kubectl apply -f k8s/auth-service.yaml
+        kubectl apply -f k8s/order-service.yaml
+        kubectl apply -f k8s/payment-service.yaml
+
+        # Force Rolling Restart (to pick up new 'latest' images)
+        kubectl rollout restart deployment/auth-service -n msa-project
+        kubectl rollout restart deployment/order-service -n msa-project
+        kubectl rollout restart deployment/payment-service -n msa-project
