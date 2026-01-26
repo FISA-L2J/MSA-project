@@ -1,0 +1,38 @@
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+  namespace: msa-project
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway # Apply to Ingress Gateway
+  jwtRules:
+    - issuer: "auth-service"
+      jwksUri: "http://auth-service.msa-project.svc.cluster.local:8080/.well-known/jwks.json"
+      forwardOriginalToken: true # Pass token to application for application-level handling if needed (e.g. context propagation)
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: require-jwt
+  namespace: msa-project
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: ALLOW
+  rules:
+    # Rule 1: Allow public access to auth-service endpoints (login, signup, validate, jwks)
+    - to:
+        - operation:
+            paths: ["/auth/*", "/.well-known/jwks.json"]
+    
+    # Rule 2: Require valid JWT for everything else
+    - from:
+        - source:
+            requestPrincipals: ["*"] # Requires any valid JWT
+      to:
+        - operation:
+            paths: ["/orders*", "/payments*"]
