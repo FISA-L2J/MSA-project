@@ -1,6 +1,13 @@
 FROM gradle:8.5-jdk17-alpine AS builder
 WORKDIR /app
-COPY . .
+
+# Copy root Gradle files
+COPY gradlew settings.gradle build.gradle ./
+COPY gradle ./gradle
+
+# Copy service source
+COPY payment-service ./payment-service
+
 RUN chmod +x gradlew
 RUN ./gradlew :payment-service:build -x test --no-daemon
 
