@@ -25,6 +25,8 @@ spec:
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: "update"
         - name: SPRING_DATASOURCE_URL
           value: "jdbc:postgresql://postgres:5432/payment_db"
         - name: SPRING_DATASOURCE_USERNAME

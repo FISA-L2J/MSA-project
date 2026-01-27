@@ -232,32 +232,63 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=41cc5
 
 #### 🔴 GCP IAM Permission Denied (403)
 - **Issue**: `Artifact Registry` 리소스 생성 중 403 Forbidden 에러.
-- **Solution**: 서비스 계정에 **Artifact Registry 관리자**(이미지 푸시용) 및 **Kubernetes Engine 관리자**(클러스터 생성용) 권한 추가.
+- **Cause**: 서비스 계정에 `Compute Admin` 권한은 있었으나, `Artifact Registry Administrator` 권한이 누락됨.
+- **Solution**: GCP Console IAM 설정에서 서비스 계정에 **Artifact Registry 관리자** 역할 추가.
 
-#### 🔴 Istio 설치 실패 (Connection Refused)
-- **Issue**: Cloud Shell 세션 만료로 `kubectl` 컨텍스트 유실.
-- **Solution**: `gcloud container clusters get-credentials ...` 로 재연결 후 설치.
-
-#### 🔴 배포 후 Pod Pending
-- **Issue**: 노드 리소스 부족.
-- **Solution**: `kubectl describe pod` 확인. 현재 `e2-standard-2` 노드 2개(총 4 vCPU, 16GB)로 운영 중.
-
-### 2. Version Control & Build
+### 2. Version Control (Git & GitHub)
 
 #### 🔴 Large File Push Error
-- **Issue**: Terraform 바이너리 등 대용량 파일이 커밋됨.
-- **Solution**: `.gitignore`에 `.terraform/` 추가 후 `git reset HEAD^`.
+- **Issue**: `git push` 시 `.terraform` 폴더 내의 바이너리 파일(100MB+)로 인해 푸시 거부됨.
+- **Cause**: `.gitignore`에 Terraform 관련 설정이 없어서 로컬 바이너리가 커밋됨.
+- **Solution**:
+  1. `.gitignore`에 `.terraform/`, `*.tfstate` 등 추가.
+  2. `git reset HEAD^`로 커밋 취소 후 다시 스테이징(`git add`) 및 커밋.
 
-#### 🔴 Gradle Wrapper Execution
-- **Issue**: 서브 모듈 디렉토리에서 `./gradlew` 실행 시 설정 누락.
-- **Solution**: 루트 디렉토리에서 `./gradlew :auth-service:bootRun` 형식으로 실행 권장.
+#### 🔴 Personal Access Token (PAT) Scope
+- **Issue**: `refusing to allow a Personal Access Token to create or update workflow` 에러.
+- **Cause**: GitHub 인증 토큰에 `workflow` 스코프(권한)가 비활성화됨.
+- **Solution**: GitHub Developer Settings에서 토큰의 **Scopes**를 수정하여 `workflow` 항목 체크.
 
-### 3. Application Runtime
+### 3. DevOps (Docker & CI/CD)
 
-#### 🔴 Missing Environment Variables
-- **Issue**: `InjectionMetadata` 에러 발생.
-- **Solution**: 환경변수(`JWT_SECRET` 등)를 실행 명령어에 포함하여 주입.
+#### 🔴 Docker Build Context
+- **Issue**: 로컬용 `docker-compose.yml`은 `build: context`를 사용하므로 소스 코드가 없는 프로덕션 환경(VM)에서 실행 불가.
+- **Solution**: CI 파이프라인에서 빌드한 이미지를 레지스트리(GCR)에 올리고, `docker-compose.yml`은 이미지를 당겨오도록(`image: ...`) 수정.
 
-#### 🔴 Authorization 403 (Malformed Token)
-- **Issue**: 헤더에 JSON 전체를 넣어서 인증 실패.
-- **Solution**: `Bearer <Pure_Access_Token>` 형식으로 정확한 토큰 값만 전송.
+#### 🔴 Docker Sudo Authentication
+- **Issue**: `sudo docker pull` 실행 시 권한 에러 발생 (credential helper가 root에 적용 안 됨).
+- **Cause**: GCP `gcloud auth configure-docker`는 현재 유저에게만 적용됨.
+- **Solution**: `deploy.yml`에서 Access Token을 직접 추출하여 로그인하는 방식으로 변경.
+  ```yaml
+  gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin https://asia-northeast3-docker.pkg.dev
+  ```
+
+### 4. Application Verification (Runtime & Logic)
+
+#### 🔴 Build Configuration - Redundant Plugin
+- **Issue**: `Order Service` 실행 시 빌드 실패.
+- **Cause**: 루트 프로젝트(`build.gradle`)의 `subprojects` 블록과 각 서비스의 `build.gradle`에 동일한 플러그인(`java`, `org.springframework.boot`)이 중복 선언됨.
+- **Solution**: 하위 모듈의 `build.gradle`에서 중복되는 플러그인 선언 제거.
+
+#### 🔴 Build Configuration - Version Mismatch
+- **Issue**: `Spring Boot 3.5.10` 버전 사용 시 `Spring Cloud`와의 호환성 문제로 빌드 실패.
+- **Cause**: `Spring Cloud` 릴리즈 트레인과 호환되지 않는 `Spring Boot` 버전을 사용하여 의존성 충돌 발생.
+- **Solution**: 호환성이 보장된 `Spring Boot 3.4.1`로 버전을 다운그레이드하여 해결.
+
+#### 🔴 Execution Context - Gradle Wrapper
+- **Issue**: `auth-service` 디렉토리 내부에서 `./gradlew bootRun` 실행 시 빌드 실패.
+- **Cause**: 루트 프로젝트에 정의된 공통 설정(플러그인, 의존성 등)을 읽지 못하고 서브 모듈을 독립 프로젝트로 인식함.
+- **Solution**: 반드시 **루트 디렉토리(`MSA-project`)** 에서 `:auth-service:bootRun` 형태로 실행하도록 가이드 수정.
+
+#### 🔴 Runtime - Missing Environment Variables
+- **Issue**: 애플리케이션 실행 중 `InjectionMetadata` 관련 에러 발생.
+- **Cause**: `JWT_SECRET`, `POSTGRES_USER` 등 필수 환경변수가 터미널 세션에 설정되지 않음.
+- **Solution**: 실행 명령어에 필요한 모든 환경변수(`export ...`)를 포함하여 한 줄로 실행하도록 스크립트 제공.
+
+#### 🔴 Logic - Missing Endpoint & Malformed Token
+- **Issue 1**: 회원가입 요청 시 `404 Not Found`.
+  - **Cause**: `Auth Service`에 `/auth/signup` 엔드포인트가 아예 구현되어 있지 않았음.
+  - **Solution**: `AuthService` 및 `AuthController`에 회원가입 로직 추가 구현.
+- **Issue 2**: 주문 요청 시 `403 Forbidden`.
+  - **Cause**: `Authorization` 헤더에 JWT 토큰 문자열만 넣어야 하는데, JSON 응답 전체(`{"accessToken":...}`)를 넣음.
+  - **Solution**: `curl` 및 `python` 파싱을 통해 `accessToken` 값만 정확히 추출하여 헤더에 주입.
