@@ -27,9 +27,31 @@ spec:
   http:
   - match:
     - uri:
-        prefix: /orders
+        prefix: /order
     route:
     - destination:
         host: order-service
         port:
           number: 8080
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: auth-service
+  namespace: msa-project
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - msa-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /auth
+    - uri:
+        prefix: /.well-known/jwks.json
+    route:
+    - destination:
+        host: auth-service
+        port:
+          number: 8082
