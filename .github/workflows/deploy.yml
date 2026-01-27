@@ -101,6 +101,9 @@ jobs:
 
         # Apply Istio Auth Policy
         kubectl apply -f k8s/istio-auth.yaml
+        
+        # Apply Istio Gateway & VirtualServices
+        kubectl apply -f k8s/istio-gateway.yaml
 
         # Force Rolling Restart (to pick up new 'latest' images)
         kubectl rollout restart deployment/auth-service -n msa-project

@@ -1,4 +1,4 @@
-# Auth Service
+2# Auth Service
 
 인증 및 권한 부여를 담당하는 마이크로서비스입니다.  
 **JWT(Json Web Token)** 기반의 인증 방식을 사용하며, **Redis**를 활용한 토큰 블랙리스트(로그아웃) 기능을 제공합니다.
