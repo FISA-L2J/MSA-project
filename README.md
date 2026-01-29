@@ -143,6 +143,7 @@ istioctl dashboard kiali
 계좌 거래 요청 - 입금/출금 (Requires JWT Authentication)
 
 > **Note**: 모든 요청의 Header에 `Authorization: Bearer <Token>`이 필요합니다.
+> 클라이언트는 **amount만** 전송하며, **userId는 서버에서 JWT로 추출**하여 Transaction Service 요청에 포함합니다.
 
 #### 입금 (Deposit)
 - **URL**: `POST /account/deposit`
@@ -161,6 +162,15 @@ istioctl dashboard kiali
     "newBalance": 10000,
     "status": "SUCCESS",
     "createdAt": "..."
+  }
+  ```
+- **Circuit Open 시 (Transaction Service 장애)**: Resilience4j Fallback 응답 예시
+  ```json
+  {
+    "userId": 1,
+    "amount": 10000,
+    "newBalance": 0,
+    "status": "FAILED"
   }
   ```
 
@@ -183,14 +193,52 @@ istioctl dashboard kiali
     "createdAt": "..."
   }
   ```
-- **Note**: 잔액 부족 시 `400 Bad Request` (Transaction Service에서 처리)
+- **Circuit Open 시 (Transaction Service 장애)**: Fallback 응답 예시 — `status: "FAILED"`, `newBalance: 0`
+- **Note**: 잔액 부족 시 `400 Bad Request` (Transaction Service에서 처리). 에러 본문 예: `"Insufficient balance. Current: 1000, Requested: 5000"`
 
 ---
 
 ### 3. Transaction Service (Port: 8081)
-잔액·거래 처리 (일반적으로 Account Service에서 내부 호출)
-- `POST /transaction/deposit` (userId, amount)
-- `POST /transaction/withdrawal` (userId, amount, 잔액 부족 시 거절)
+잔액·거래 처리 (일반적으로 Account Service에서 내부 호출). Account Service가 **TransactionProcessRequest**(userId, amount)를 가공하여 전달합니다.
+
+#### 입금 처리 (내부)
+- **URL**: `POST /transaction/deposit`
+- **Request** (Account Service가 JWT에서 추출한 userId와 클라이언트 amount를 조합하여 전송):
+  ```json
+  {
+    "userId": 1,
+    "amount": 10000
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "transactionId": 1,
+    "newBalance": 10000,
+    "status": "SUCCESS",
+    "createdAt": "..."
+  }
+  ```
+
+#### 출금 처리 (내부)
+- **URL**: `POST /transaction/withdrawal`
+- **Request**:
+  ```json
+  {
+    "userId": 1,
+    "amount": 5000
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "transactionId": 2,
+    "newBalance": 5000,
+    "status": "SUCCESS",
+    "createdAt": "..."
+  }
+  ```
+- **잔액 부족 시**: `400 Bad Request`, 본문 예시: `"Insufficient balance. Current: 1000, Requested: 5000"` (GlobalExceptionHandler가 InsufficientBalanceException 메시지를 그대로 반환)
 
 ---
 
