@@ -3,7 +3,7 @@
 Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데모 프로젝트입니다.  
 기존 VM 기반 배포에서 **Kubernetes(GKE) 및 Istio Service Mesh** 환경으로 마이그레이션되었습니다.
 
-주문(Order), 결제(Payment), 인증(Auth) 서비스로 구성되어 있으며, 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
+인증(Auth), 계좌(Account), 거래(Transaction) 서비스로 구성되어 있으며, 입금/출금 도메인과 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
 
 ## 🏗 아키텍처 및 기술 스택
 
@@ -20,8 +20,8 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
 | --- | --- | --- | --- |
 | **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 | 8082 |
-| **Order Service** | Spring Boot, OpenFeign, Resilience4j | 주문 생성, 결제 요청(Client), 서킷 브레이커 | 8080 |
-| **Payment Service** | Spring Boot, JPA | 결제 승인/거절 처리 | 8081 |
+| **Account Service** | Spring Boot, OpenFeign, Resilience4j | 계좌/거래 요청, 입금·출금 API, 서킷 브레이커 | 8080 |
+| **Transaction Service** | Spring Boot, JPA | 잔액·거래 처리(입금/출금 실행) | 8081 |
 
 ---
 
@@ -71,7 +71,7 @@ Istio Ingress Gateway의 External IP를 확인하여 접속합니다.
 
 ```bash
 kubectl get svc istio-ingressgateway -n istio-system
-# EXTERNAL-IP 확인 후: http://<EXTERNAL-IP>/orders
+# EXTERNAL-IP 확인 후: http://<EXTERNAL-IP>/account
 ```
 
 **Kiali 대시보드 (Service Mesh 시각화)**:
@@ -88,11 +88,11 @@ istioctl dashboard kiali
 - **Sidecar Proxy**: 각 서비스 파드에 Envoy 프록시가 주입되어 트래픽을 가로채고 제어합니다.
 
 ### 2. Token Propagation (토큰 전파)
-- **FeignClientInterceptor**를 통해 `Order Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Payment Service`로 전달합니다.
+- **FeignClientInterceptor**를 통해 `Account Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Transaction Service`로 전달합니다.
 - 이를 통해 마이크로서비스 간의 호출에서도 **사용자 인증 정보(User Context)가 끊기지 않고 유지**됩니다.
 
 ### 3. Resilience (회복 탄력성)
-- **Circuit Breaker**: `Payment Service` 장애 시 `Order Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Order Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
+- **Circuit Breaker**: `Transaction Service` 장애 시 `Account Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Account Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
 
 ### 4. Database Isolation
 - 단일 PostgreSQL 파드 내에서 `auth_db`, `order_db`, `payment_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
@@ -139,58 +139,58 @@ istioctl dashboard kiali
 
 ---
 
-### 2. Order Service (Port: 8080)
-주문 관리 및 결제 서비스 호출 (Requires JWT Authentication)
+### 2. Account Service (Port: 8080)
+계좌 거래 요청 - 입금/출금 (Requires JWT Authentication)
 
 > **Note**: 모든 요청의 Header에 `Authorization: Bearer <Token>`이 필요합니다.
 
-#### 주문 생성
-- **URL**: `POST /order`
+#### 입금 (Deposit)
+- **URL**: `POST /account/deposit`
 - **Request**:
   ```json
   {
-    "productId": 101,
-    "productName": "Laptop",
-    "quantity": 1,
-    "unitPrice": 1500000,
-    "paymentMethod": "CREDIT_CARD" // [CREDIT_CARD, CASH, EASY_PAYMENT]
+    "amount": 10000
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "orderId": 1,
+    "transactionId": 1,
     "userId": 1,
-    "status": "COMPLETED", // 결제 성공 시
-    "totalAmount": 1500000,
+    "amount": 10000,
+    "newBalance": 10000,
+    "status": "SUCCESS",
     "createdAt": "..."
   }
   ```
 
----
-
-### 3. Payment Service (Port: 8081)
-결제 처리 (일반적으로 내부 서비스에서 호출됨)
-
-#### 결제 승인
-- **URL**: `POST /payment/process`
+#### 출금 (Withdrawal)
+- **URL**: `POST /account/withdrawal`
 - **Request**:
   ```json
   {
-    "orderId": 1,
-    "userId": 1,
-    "amount": 1500000,
-    "paymentMethod": "CREDIT_CARD"
+    "amount": 5000
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "paymentId": 1,
+    "transactionId": 2,
+    "userId": 1,
+    "amount": 5000,
+    "newBalance": 5000,
     "status": "SUCCESS",
-    "orderId": 1
+    "createdAt": "..."
   }
   ```
+- **Note**: 잔액 부족 시 `400 Bad Request` (Transaction Service에서 처리)
+
+---
+
+### 3. Transaction Service (Port: 8081)
+잔액·거래 처리 (일반적으로 Account Service에서 내부 호출)
+- `POST /transaction/deposit` (userId, amount)
+- `POST /transaction/withdrawal` (userId, amount, 잔액 부족 시 거절)
 
 ---
 
@@ -213,16 +213,16 @@ docker ps
 POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :auth-service:bootRun
 ```
 
-#### Payment Service
+#### Transaction Service
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :payment-service:bootRun
+POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 ./gradlew :transaction-service:bootRun
 ```
 
-#### Order Service
+#### Account Service
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :order-service:bootRun
+POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :account-service:bootRun
 ```
-*모든 서비스를 띄워야 전체 흐름 테스트가 가능합니다.*
+*모든 서비스를 띄워야 전체 흐름(로그인 → 입금/출금) 테스트가 가능합니다.*
 
 ---
 
@@ -266,7 +266,7 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
 ### 4. Application Verification (Runtime & Logic)
 
 #### 🔴 Build Configuration - Redundant Plugin
-- **Issue**: `Order Service` 실행 시 빌드 실패.
+- **Issue**: `Account Service` 등 서비스 실행 시 빌드 실패.
 - **Cause**: 루트 프로젝트(`build.gradle`)의 `subprojects` 블록과 각 서비스의 `build.gradle`에 동일한 플러그인(`java`, `org.springframework.boot`)이 중복 선언됨.
 - **Solution**: 하위 모듈의 `build.gradle`에서 중복되는 플러그인 선언 제거.
 
@@ -289,6 +289,6 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
 - **Issue 1**: 회원가입 요청 시 `404 Not Found`.
   - **Cause**: `Auth Service`에 `/auth/signup` 엔드포인트가 아예 구현되어 있지 않았음.
   - **Solution**: `AuthService` 및 `AuthController`에 회원가입 로직 추가 구현.
-- **Issue 2**: 주문 요청 시 `403 Forbidden`.
+- **Issue 2**: 입금/출금 요청 시 `403 Forbidden`.
   - **Cause**: `Authorization` 헤더에 JWT 토큰 문자열만 넣어야 하는데, JSON 응답 전체(`{"accessToken":...}`)를 넣음.
   - **Solution**: `curl` 및 `python` 파싱을 통해 `accessToken` 값만 정확히 추출하여 헤더에 주입.
