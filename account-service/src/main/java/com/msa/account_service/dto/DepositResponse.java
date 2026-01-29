@@ -1,0 +1,18 @@
+package com.msa.account_service.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+public class DepositResponse {
+	private Long transactionId;
+	private Long userId;
+	private BigDecimal amount;
+	private BigDecimal newBalance;
+	private String status;
+	private LocalDateTime createdAt;
+}
