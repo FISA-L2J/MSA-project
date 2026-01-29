@@ -27,7 +27,7 @@ spec:
         - name: SPRING_JPA_HIBERNATE_DDL_AUTO
           value: "update"
         - name: SPRING_DATASOURCE_URL
-          value: "jdbc:postgresql://postgres:5432/order_db"
+          value: "jdbc:postgresql://postgres:5432/account_db"
         - name: SPRING_DATASOURCE_USERNAME
           valueFrom:
             secretKeyRef:

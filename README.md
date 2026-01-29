@@ -12,7 +12,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 - **IaC**: Terraform (GKE Cluster & Node Pool 프로비저닝)
 - **Service Mesh**: Istio (Traffic Management, Ingress Gateway)
 - **CI/CD**: GitHub Actions (Docker Build -> Artifact Registry -> GKE Deploy)
-- **RDBMS**: PostgreSQL (GKE 내 StatefulSet, Logical DB 분리: `auth_db`, `order_db`, `payment_db`)
+- **RDBMS**: PostgreSQL (GKE 내 StatefulSet, Logical DB 분리: `auth_db`, `account_db`, `transaction_db`)
 - **Cache**: Redis (Auth Service 토큰 관리)
 - **Tracing**: Zipkin (분산 트레이싱)
 
@@ -95,7 +95,7 @@ istioctl dashboard kiali
 - **Circuit Breaker**: `Transaction Service` 장애 시 `Account Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Account Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
 
 ### 4. Database Isolation
-- 단일 PostgreSQL 파드 내에서 `auth_db`, `order_db`, `payment_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
+- 단일 PostgreSQL 파드 내에서 `auth_db`, `account_db`, `transaction_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
 - `k8s/secret.yaml`을 통해 DB 자격증명을 안전하게 관리합니다.
 
 ---
