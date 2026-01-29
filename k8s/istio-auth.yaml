@@ -35,4 +35,4 @@ spec:
             requestPrincipals: ["*"] # Requires any valid JWT
       to:
         - operation:
-            paths: ["/orders*", "/payments*"]
+            paths: ["/account*"]

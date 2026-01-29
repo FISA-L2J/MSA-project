@@ -1,24 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-service
+  name: account-service
   namespace: msa-project
   labels:
-    app: order-service
+    app: account-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: order-service
+      app: account-service
   template:
     metadata:
       labels:
-        app: order-service
+        app: account-service
     spec:
       containers:
-      - name: order-service
-        # Replace [PROJECT_ID] with your actual GCP Project ID
-        image: asia-northeast3-docker.pkg.dev/msa-project-prod/msa-repo/order-service:latest
+      - name: account-service
+        image: asia-northeast3-docker.pkg.dev/msa-project-prod/msa-repo/account-service:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -41,8 +40,8 @@ spec:
               key: postgres-password
         - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
           value: "http://zipkin:9411/api/v2/spans"
-        - name: PAYMENT_SERVICE_URL
-          value: "http://payment-service:8081"
+        - name: TRANSACTION_SERVICE_URL
+          value: "http://transaction-service:8081"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -52,11 +51,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: order-service
+  name: account-service
   namespace: msa-project
 spec:
   selector:
-    app: order-service
+    app: account-service
   ports:
   - port: 8080
     targetPort: 8080

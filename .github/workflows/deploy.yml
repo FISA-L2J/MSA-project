@@ -46,21 +46,21 @@ jobs:
         push: true
         tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/auth-service:latest
 
-    - name: Build and Push Order Service
+    - name: Build and Push Account Service
       uses: docker/build-push-action@v4
       with:
         context: .
-        file: ./order-service/Dockerfile
+        file: ./account-service/Dockerfile
         push: true
-        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/order-service:latest
+        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/account-service:latest
 
-    - name: Build and Push Payment Service
+    - name: Build and Push Transaction Service
       uses: docker/build-push-action@v4
       with:
         context: .
-        file: ./payment-service/Dockerfile
+        file: ./transaction-service/Dockerfile
         push: true
-        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/payment-service:latest
+        tags: ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/msa-repo/transaction-service:latest
 
     # 5. Authenticate to GKE
     - name: Get GKE Credentials
@@ -96,8 +96,8 @@ jobs:
 
         # Apply Services
         kubectl apply -f k8s/auth-service.yaml
-        kubectl apply -f k8s/order-service.yaml
-        kubectl apply -f k8s/payment-service.yaml
+        kubectl apply -f k8s/account-service.yaml
+        kubectl apply -f k8s/transaction-service.yaml
 
         # Apply Istio Auth Policy
         kubectl apply -f k8s/istio-auth.yaml
@@ -107,5 +107,5 @@ jobs:
 
         # Force Rolling Restart (to pick up new 'latest' images)
         kubectl rollout restart deployment/auth-service -n msa-project
-        kubectl rollout restart deployment/order-service -n msa-project
-        kubectl rollout restart deployment/payment-service -n msa-project
+        kubectl rollout restart deployment/account-service -n msa-project
+        kubectl rollout restart deployment/transaction-service -n msa-project
