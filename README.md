@@ -20,10 +20,10 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 <h2 id="team">1. 👤 팀원 소개 (Team Members)</h2>
 
-| <img src="https://github.com/chaeyuuu.png" width="150"> | <img src="https://github.com/YongwanJoo.png" width="150"> | <img src="https://github.com/woojinni.png" width="150"> |
+| <img src="https://github.com/chaeyuuu.png" width="150"> | <img src="https://github.com/woojinni.png" width="150"> | <img src="https://github.com/YongwanJoo.png" width="150"> |
 | :---: | :---: | :---: |
-| **이채유** | **주용완** | **장우진** |
-| [@chaeyuuu](https://github.com/chaeyuuu) | [@YongwanJoo](https://github.com/YongwanJoo) | [@woojinni](https://github.com/woojinni) |
+| **이채유** | **장우진** | **주용완** |
+| [@chaeyuuu](https://github.com/chaeyuuu) | [@woojinni](https://github.com/woojinni) | [@YongwanJoo](https://github.com/YongwanJoo) |
 
 
 
