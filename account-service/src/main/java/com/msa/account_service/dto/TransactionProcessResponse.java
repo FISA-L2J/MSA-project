@@ -1,5 +1,6 @@
 package com.msa.account_service.dto;
 
+import com.msa.account_service.domain.Status;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,6 +14,6 @@ import java.time.LocalDateTime;
 public class TransactionProcessResponse {
 	private Long transactionId;
 	private BigDecimal newBalance;
-	private String status;
+	private Status status;
 	private LocalDateTime createdAt;
 }

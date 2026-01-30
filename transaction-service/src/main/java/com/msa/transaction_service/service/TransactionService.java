@@ -1,6 +1,7 @@
 package com.msa.transaction_service.service;
 
 import com.msa.transaction_service.domain.Balance;
+import com.msa.transaction_service.domain.Status;
 import com.msa.transaction_service.domain.Transaction;
 import com.msa.transaction_service.domain.TransactionType;
 import com.msa.transaction_service.dto.TransactionProcessRequest;
@@ -20,9 +21,6 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class TransactionService {
-
-	private static final String STATUS_SUCCESS = "SUCCESS";
-	private static final String STATUS_FAILED = "FAILED";
 
 	private final BalanceRepository balanceRepository;
 	private final TransactionRepository transactionRepository;
@@ -48,7 +46,7 @@ public class TransactionService {
 		return TransactionProcessResponse.builder()
 				.transactionId(savedTransaction.getId())
 				.newBalance(balance.getBalance())
-				.status(STATUS_SUCCESS)
+				.status(Status.SUCCESS)
 				.createdAt(savedTransaction.getCreatedAt())
 				.build();
 	}
@@ -79,7 +77,7 @@ public class TransactionService {
 		return TransactionProcessResponse.builder()
 				.transactionId(savedTransaction.getId())
 				.newBalance(balance.getBalance())
-				.status(STATUS_SUCCESS)
+				.status(Status.SUCCESS)
 				.createdAt(savedTransaction.getCreatedAt())
 				.build();
 	}

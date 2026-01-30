@@ -2,6 +2,7 @@ package com.msa.account_service.service;
 
 import com.msa.account_service.client.TransactionClient;
 import com.msa.account_service.domain.Account;
+import com.msa.account_service.domain.Status;
 import com.msa.account_service.dto.*;
 import com.msa.account_service.repository.AccountRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -63,7 +64,7 @@ public class AccountService {
 				.userId(getAuthenticatedUserId())
 				.amount(request.getAmount())
 				.newBalance(BigDecimal.ZERO)
-				.status("FAILED")
+				.status(Status.FAILED)
 				.build();
 	}
 
@@ -97,7 +98,7 @@ public class AccountService {
 				.userId(getAuthenticatedUserId())
 				.amount(request.getAmount())
 				.newBalance(BigDecimal.ZERO)
-				.status("FAILED")
+				.status(Status.FAILED)
 				.build();
 	}
 

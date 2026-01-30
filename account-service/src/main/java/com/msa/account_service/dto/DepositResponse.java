@@ -1,5 +1,6 @@
 package com.msa.account_service.dto;
 
+import com.msa.account_service.domain.Status;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,6 +14,6 @@ public class DepositResponse {
 	private Long userId;
 	private BigDecimal amount;
 	private BigDecimal newBalance;
-	private String status;
+	private Status status;
 	private LocalDateTime createdAt;
 }
