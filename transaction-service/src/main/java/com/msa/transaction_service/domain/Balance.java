@@ -18,6 +18,9 @@ public class Balance {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	private Long version;
+
 	private Long userId;
 
 	@Column(name = "balance_amount", precision = 19, scale = 2)
