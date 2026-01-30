@@ -1,0 +1,54 @@
+server:
+  port: 8080
+
+logging:
+  level:
+    com.msa.account_service: DEBUG
+    com.msa.account_service.client.TransactionClient: DEBUG
+
+spring:
+  jwt:
+    secret: ${JWT_SECRET}
+  application:
+    name: account-service
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:msa_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: "http://localhost:${ZIPKIN_PORT:9411}/api/v2/spans"
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      transactionService:
+        baseConfig: default

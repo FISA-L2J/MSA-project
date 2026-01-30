@@ -17,7 +17,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: order-service
+  name: account-service
   namespace: msa-project
 spec:
   hosts:
@@ -27,10 +27,10 @@ spec:
   http:
   - match:
     - uri:
-        prefix: /order
+        prefix: /account
     route:
     - destination:
-        host: order-service
+        host: account-service
         port:
           number: 8080
 ---
