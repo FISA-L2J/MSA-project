@@ -5,7 +5,43 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 인증(Auth), 계좌(Account), 거래(Transaction) 서비스로 구성되어 있으며, 입금/출금 도메인과 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
 
-## 🏗 아키텍처 및 기술 스택
+## 📌 목차
+
+* [1. 👤 팀원 소개](#team)
+* [2. 💡 주제 선정 배경](#background)
+* [3. 🏗 아키텍처 및 기술 스택](#architecture)
+* [4. 🚀 Cloud Native 배포 가이드](#deploy)
+* [5. 🌟 핵심 기능](#key-features)
+* [6. 📚 API 명세서](#api)
+* [7. 🚀 로컬 실행 방법](#local)
+* [8. 🛠 트러블슈팅](#troubleshooting)
+
+---
+
+<h2 id="team">1. 👤 팀원 소개 (Team Members)</h2>
+
+| <img src="https://github.com/chaeyuuu.png" width="150"> | <img src="https://github.com/YongwanJoo.png" width="150"> | <img src="https://github.com/woojinni.png" width="150"> |
+| :---: | :---: | :---: |
+| **이채유** | **주용완** | **장우진** |
+| [@chaeyuuu](https://github.com/chaeyuuu) | [@YongwanJoo](https://github.com/YongwanJoo) | [@woojinni](https://github.com/woojinni) |
+
+
+
+<br>
+
+<h2 id="background">2. 💡 주제 선정 배경 (Project Background)</h2>
+
+본 프로젝트는 **MSA와 Cloud Native 환경에 대한 학습**을 목표로 진행되었다.  
+단일 애플리케이션에서 **서비스 분리·독립 배포·트래픽 제어**를 경험하는 과정에서,  
+실제 GKE와 Istio 기반의 **운영 가능한 구조**를 구축하는 것이 목표이다.
+
+> "VM 기반 배포에서 Kubernetes와 Service Mesh로 어떻게 전환할 수 있을까?"  
+> 라는 질문에서 출발하여, **Auth / Account / Transaction** 도메인으로 분리된  
+> 입금·출금 파이프라인을 **GKE + Istio** 환경에서 동작하도록 설계하였다.
+
+<br>
+
+<h2 id="architecture">3. 🏗 아키텍처 및 기술 스택</h2>
 
 ### Infrastructure (Cloud Native)
 - **Cloud**: Google Cloud Platform (GKE Standard Cluster, Artifact Registry)
@@ -25,7 +61,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데�
 
 ---
 
-## 🚀 Cloud Native 배포 가이드 (GKE & Istio)
+<h2 id="deploy">4. 🚀 Cloud Native 배포 가이드 (GKE & Istio)</h2>
 
 이 프로젝트는 **Terraform**으로 GKE 클러스터를 생성하고, **GitHub Actions**로 자동 배포(CD)를 수행합니다.
 
@@ -81,7 +117,7 @@ istioctl dashboard kiali
 
 ---
 
-## 🌟 핵심 기능 (Key Features)
+<h2 id="key-features">5. 🌟 핵심 기능 (Key Features)</h2>
 
 ### 1. Istio Service Mesh
 - **Traffic Management**: `Istio Gateway`를 통해 모든 외부 트래픽을 단일 진입점으로 관리합니다.
@@ -100,7 +136,7 @@ istioctl dashboard kiali
 
 ---
 
-## 📚 API 명세서 (API Documentation)
+<h2 id="api">6. 📚 API 명세서 (API Documentation)</h2>
 
 ### 1. Auth Service (Port: 8082)
 사용자 인증 및 JWT 토큰 관리
@@ -242,7 +278,7 @@ istioctl dashboard kiali
 
 ---
 
-## 🚀 로컬 실행 방법 (Local Development)
+<h2 id="local">7. 🚀 로컬 실행 방법 (Local Development)</h2>
 
 ### 1. 인프라 실행 (Docker)
 프로젝트 루트에서 `docker-compose`를 사용하여 로컬 DB 등을 실행합니다.
@@ -274,7 +310,7 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
 
 ---
 
-## 🛠️ 트러블 슈팅 (Troubleshooting)
+<h2 id="troubleshooting">8. 🛠 트러블슈팅 (Troubleshooting)</h2>
 
 ### 1. Cloud & Infrastructure (GKE, Terraform)
 
