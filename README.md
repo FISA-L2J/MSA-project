@@ -1,5 +1,7 @@
 # MSA Project (FISA-L2J) - Cloud Native Migration
 
+<img width="2816" height="1286" alt="MSA" src="https://github.com/user-attachments/assets/488575a0-c6f2-4559-8a03-cb13c019d287" />
+
 Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데모 프로젝트입니다.  
 기존 VM 기반 배포에서 **Kubernetes(GKE) 및 Istio Service Mesh** 환경으로 마이그레이션되었습니다.
 
