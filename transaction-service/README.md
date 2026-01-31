@@ -8,7 +8,6 @@
 - **Framework**: Spring Boot
 - **Database**: PostgreSQL (JPA/Hibernate) — 로컬 기본 DB: `msa_db`
 - **Monitoring**: Zipkin (Tracing)
-- **API Docs**: Springdoc OpenAPI (Swagger UI — `/swagger-ui.html`)
 
 ## 실행 방법
 

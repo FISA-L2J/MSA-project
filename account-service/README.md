@@ -11,7 +11,6 @@
 - **Client**: OpenFeign (Transaction Service 호출)
 - **Resilience**: Resilience4j (Circuit Breaker, Fallback)
 - **Monitoring**: Zipkin (Tracing)
-- **API Docs**: Springdoc OpenAPI (Swagger UI — `/swagger-ui.html`)
 
 ## 실행 방법
 
