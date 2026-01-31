@@ -6,13 +6,9 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Date;
-import java.util.UUID;
 
 @Component
 public class JwtProvider {
@@ -22,17 +18,37 @@ public class JwtProvider {
     private RSAPublicKey publicKey;
     private String keyId;
 
-    @PostConstruct
-    protected void init() throws NoSuchAlgorithmException {
-        // Generate RSA Key Pair for Demo Purpose
-        // In production, load this from a KeyStore or Vault
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
-        KeyPair keyPair = keyPairGenerator.generateKeyPair();
+    @org.springframework.beans.factory.annotation.Value("${JWT_PRIVATE_KEY}")
+    private String privateKeyPem;
 
-        this.privateKey = (RSAPrivateKey) keyPair.getPrivate();
-        this.publicKey = (RSAPublicKey) keyPair.getPublic();
-        this.keyId = UUID.randomUUID().toString();
+    @org.springframework.beans.factory.annotation.Value("${JWT_PUBLIC_KEY}")
+    private String publicKeyPem;
+
+    @PostConstruct
+    protected void init() throws Exception {
+        java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("RSA");
+
+        // Parse Private Key
+        String privateKeyContent = privateKeyPem
+                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                .replace("-----END RSA PRIVATE KEY-----", "")
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+        java.security.spec.PKCS8EncodedKeySpec keySpecPKCS8 = new java.security.spec.PKCS8EncodedKeySpec(
+                java.util.Base64.getDecoder().decode(privateKeyContent));
+        this.privateKey = (RSAPrivateKey) keyFactory.generatePrivate(keySpecPKCS8);
+
+        // Parse Public Key
+        String publicKeyContent = publicKeyPem
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replaceAll("\\s", "");
+        java.security.spec.X509EncodedKeySpec keySpecX509 = new java.security.spec.X509EncodedKeySpec(
+                java.util.Base64.getDecoder().decode(publicKeyContent));
+        this.publicKey = (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
+
+        this.keyId = "msa-prod-key-1";
     }
 
     public String createToken(String userId) {
@@ -41,6 +57,7 @@ public class JwtProvider {
 
         return Jwts.builder()
                 .setSubject(userId)
+                .setIssuer("auth-service")
                 .setIssuedAt(now)
                 .setExpiration(validity)
                 .setHeaderParam("kid", keyId) // Crucial for JWKS matching

@@ -45,11 +45,16 @@ spec:
           value: "6379"
         - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
           value: "http://zipkin:9411/api/v2/spans"
-        - name: JWT_SECRET
+        - name: JWT_PRIVATE_KEY
           valueFrom:
             secretKeyRef:
-              name: msa-secrets
-              key: jwt-secret
+              name: jwt-secrets
+              key: private_key.pem
+        - name: JWT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secrets
+              key: public_key.pem
 ---
 apiVersion: v1
 kind: Service
