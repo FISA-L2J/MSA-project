@@ -2,7 +2,7 @@
 
 <img width="2816" height="1286" alt="MSA" src="https://github.com/user-attachments/assets/488575a0-c6f2-4559-8a03-cb13c019d287" />
 
-Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데모 프로젝트입니다.  
+Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 계좌·거래 데모 프로젝트입니다.  
 기존 VM 기반 배포에서 **Kubernetes(GKE) 및 Istio Service Mesh** 환경으로 마이그레이션되었습니다.
 
 인증(Auth), 계좌(Account), 거래(Transaction) 서비스로 구성되어 있으며, 입금/출금 도메인과 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
