@@ -57,7 +57,7 @@ Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 계좌·거래 데
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
 | --- | --- | --- | --- |
-| **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 | 8082 |
+| **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 (Port: 8082) | 8082 |
 | **Account Service** | Spring Boot, OpenFeign, Resilience4j | 계좌/거래 요청, 입금·출금 API, 서킷 브레이커 | 8080 |
 | **Transaction Service** | Spring Boot, JPA | 잔액·거래 처리(입금/출금 실행) | 8081 |
 
@@ -195,7 +195,8 @@ istioctl dashboard kiali
   ```json
   {
     "transactionId": 1,
-    "userId": 1,
+    "transactionId": 1,
+    "userId": "testuser",
     "amount": 10000,
     "newBalance": 10000,
     "status": "SUCCESS",
@@ -244,7 +245,7 @@ istioctl dashboard kiali
 - **Request** (Account Service가 JWT에서 추출한 userId와 클라이언트 amount를 조합하여 전송):
   ```json
   {
-    "userId": 1,
+    "userId": "testuser",
     "amount": 10000
   }
   ```
@@ -282,31 +283,33 @@ istioctl dashboard kiali
 
 <h2 id="local">7. 🚀 로컬 실행 방법 (Local Development)</h2>
 
-### 1. 인프라 실행 (Docker)
-프로젝트 루트에서 `docker-compose`를 사용하여 로컬 DB 등을 실행합니다.
+### 1. 자동 설정 스크립트 사용 (권장)
+프로젝트 루트에서 제공되는 `guide_setup.sh` 스크립트를 사용하면, `.env.local` 파일 생성과 로컬 키 발급, Docker 인프라 실행을 한 번에 처리해줍니다.
 
 ```bash
-docker-compose up -d
-docker ps
-# Postgres(5432), Zipkin(9411), Redis(6379) 확인
+# 실행 권한 부여
+chmod +x scripts/guide_setup.sh
+
+# 스크립트 실행 (DB 비밀번호 설정 가능)
+DB_PASSWORD=your_secure_password ./scripts/guide_setup.sh
 ```
 
 ### 2. 서비스 실행
- **중요**: 각 서비스는 루트 디렉토리(`MSA-project`)에서 아래 명령어로 실행해야 합니다. (환경변수 포함)
+인프라(DB, Redis 등)가 준비되면, 생성된 `.env.local`을 로드하여 각 서비스를 실행합니다. 터미널 3개를 열어 각각 실행하세요.
 
-#### Auth Service
+#### Auth Service (Terminal 1)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :auth-service:bootRun
+source .env.local && ./gradlew :auth-service:bootRun
 ```
 
-#### Transaction Service
+#### Account Service (Terminal 2)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 ./gradlew :transaction-service:bootRun
+source .env.local && ./gradlew :account-service:bootRun
 ```
 
-#### Account Service
+#### Transaction Service (Terminal 3)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :account-service:bootRun
+source .env.local && ./gradlew :transaction-service:bootRun
 ```
 *모든 서비스를 띄워야 전체 흐름(로그인 → 입금/출금) 테스트가 가능합니다.*
 
