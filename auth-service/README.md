@@ -21,14 +21,18 @@ PostgreSQL(5432)과 Redis(6379)가 실행 중이어야 합니다.
 docker-compose up -d
 ```
 
-### 로컬 실행
+### 로컬 실행 (권장)
+루트에서 생성된 `.env.local`을 사용하여 실행합니다.
+
 ```bash
-./gradlew bootRun
+source ../.env.local && ./gradlew bootRun
 ```
 실행 후 `http://localhost:8082`에서 서비스가 동작합니다.
 
 > **Note**: 초기 실행 시 `DataInitializer`가 테스트용 계정(`user` / `password`)을 자동으로 생성합니다.
-> **Key Management**: 데모 목적상 **서버 시작 시 RSA 키 쌍(Public/Private Key)이 메모리에서 생성**됩니다. 재시작 시 이전 토큰은 무효화됩니다.
+> **Key Management (RS256)**: 
+> - 로컬: `local_setup.sh`가 생성한 키가 환경변수(`JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`)로 주입됩니다.
+> - 프로덕션(K8s): Kubernetes Secret(`jwt-secrets`)에서 파드에 주입됩니다.
 
 ## API 명세
 

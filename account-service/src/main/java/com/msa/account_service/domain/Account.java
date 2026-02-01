@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,18 +19,28 @@ public class Account {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private Long userId;
+	private String userId;
 	private String accountNumber;
 	private LocalDateTime createdAt;
 
+	private BigDecimal balance = BigDecimal.ZERO;
+
+	public void setBalance(BigDecimal balance) {
+		this.balance = balance;
+	}
+
+	public BigDecimal getBalance() {
+		return this.balance;
+	}
+
 	@Builder
-	public Account(Long userId, String accountNumber, LocalDateTime createdAt) {
+	public Account(String userId, String accountNumber, LocalDateTime createdAt) {
 		this.userId = userId;
 		this.accountNumber = accountNumber;
 		this.createdAt = createdAt;
 	}
 
-	public static Account createAccount(Long userId, String accountNumber) {
+	public static Account createAccount(String userId, String accountNumber) {
 		return Account.builder()
 				.userId(userId)
 				.accountNumber(accountNumber)

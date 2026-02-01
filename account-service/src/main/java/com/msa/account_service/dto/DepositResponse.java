@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 public class DepositResponse {
 	private Long transactionId;
-	private Long userId;
+	private String userId;
 	private BigDecimal amount;
 	private BigDecimal newBalance;
 	private Status status;

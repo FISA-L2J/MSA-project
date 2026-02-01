@@ -40,6 +40,8 @@ spec:
               key: postgres-password
         - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
           value: "http://zipkin:9411/api/v2/spans"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://auth-service.msa-project.svc.cluster.local:8082/.well-known/jwks.json"
 ---
 apiVersion: v1
 kind: Service

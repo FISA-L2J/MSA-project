@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.interfaces.RSAPublicKey;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,17 +21,23 @@ public class JwksController {
     @GetMapping("/.well-known/jwks.json")
     public Map<String, Object> getJwks() {
         RSAPublicKey publicKey = jwtProvider.getPublicKey();
-        String n = Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey.getModulus().toByteArray());
-        String e = Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey.getPublicExponent().toByteArray());
+        String kid = jwtProvider.getKeyId();
 
-        Map<String, Object> key = Map.of(
-                "kty", "RSA",
-                "kid", jwtProvider.getKeyId(),
-                "use", "sig",
-                "alg", "RS256",
-                "n", n,
-                "e", e);
+        Map<String, Object> jwk = new HashMap<>();
+        jwk.put("kty", "RSA");
+        jwk.put("alg", "RS256");
+        jwk.put("use", "sig");
+        jwk.put("kid", kid);
+        jwk.put("n", Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey.getModulus().toByteArray()));
+        jwk.put("e",
+                Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey.getPublicExponent().toByteArray()));
 
-        return Map.of("keys", List.of(key));
+        List<Map<String, Object>> keys = new ArrayList<>();
+        keys.add(jwk);
+
+        Map<String, Object> jwks = new HashMap<>();
+        jwks.put("keys", keys);
+
+        return jwks;
     }
 }

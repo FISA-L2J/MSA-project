@@ -21,18 +21,18 @@ public class Balance {
 	@Version
 	private Long version;
 
-	private Long userId;
+	private String userId;
 
 	@Column(name = "balance_amount", precision = 19, scale = 2)
 	private BigDecimal balance;
 
 	@Builder
-	public Balance(Long userId, BigDecimal balance) {
+	public Balance(String userId, BigDecimal balance) {
 		this.userId = userId;
 		this.balance = balance;
 	}
 
-	public static Balance createForUser(Long userId) {
+	public static Balance createForUser(String userId) {
 		return Balance.builder()
 				.userId(userId)
 				.balance(BigDecimal.ZERO)

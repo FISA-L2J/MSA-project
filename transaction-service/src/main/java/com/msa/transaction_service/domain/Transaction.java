@@ -19,7 +19,7 @@ public class Transaction {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private Long userId;
+	private String userId;
 
 	@Enumerated(EnumType.STRING)
 	private TransactionType type;
@@ -29,7 +29,8 @@ public class Transaction {
 	private LocalDateTime createdAt;
 
 	@Builder
-	public Transaction(Long userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter, LocalDateTime createdAt) {
+	public Transaction(String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
+			LocalDateTime createdAt) {
 		this.userId = userId;
 		this.type = type;
 		this.amount = amount;
@@ -37,7 +38,7 @@ public class Transaction {
 		this.createdAt = createdAt;
 	}
 
-	public static Transaction create(Long userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter) {
+	public static Transaction create(String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter) {
 		return Transaction.builder()
 				.userId(userId)
 				.type(type)
