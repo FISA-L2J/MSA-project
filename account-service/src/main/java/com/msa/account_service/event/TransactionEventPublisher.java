@@ -1,6 +1,7 @@
 package com.msa.account_service.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.msa.account_service.constatns.NatsConstants;
 import com.msa.account_service.dto.TransactionProcessRequest;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
@@ -16,16 +17,13 @@ public class TransactionEventPublisher {
     private final Connection natsConnection;
     private final ObjectMapper objectMapper;
 
-    private static final String DEPOSIT_SUBJECT = "transaction.deposit";
-    private static final String WITHDRAWAL_SUBJECT = "transaction.withdrawal";
-
     // Account Service 에서 호출하는 메서드
     public void publishDeposit(TransactionProcessRequest request) {
-        publish(DEPOSIT_SUBJECT, request);
+        publish(NatsConstants.DEPOSIT, request);
     }
 
     public void publishWithdrawal(TransactionProcessRequest request) {
-        publish(WITHDRAWAL_SUBJECT, request);
+        publish(NatsConstants.WITHDRAWAL, request);
     }
 
     private void publish(String subject, TransactionProcessRequest request) {

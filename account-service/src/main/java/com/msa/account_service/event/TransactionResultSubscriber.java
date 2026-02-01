@@ -1,6 +1,7 @@
 package com.msa.account_service.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.msa.account_service.constatns.NatsConstants;
 import com.msa.account_service.domain.Status;
 import com.msa.account_service.domain.TransactionRecord;
 import com.msa.account_service.dto.TransactionProcessResponse;
@@ -34,7 +35,7 @@ public class TransactionResultSubscriber implements CommandLineRunner {
 
         ensureStreams(jsm);
 
-        js.subscribe("transaction.result.>", dispatcher, msg -> {
+        js.subscribe(NatsConstants.RESULT_ALL, dispatcher, msg -> {
             try {
                 TransactionProcessResponse response = objectMapper.readValue(
                         msg.getData(), TransactionProcessResponse.class);
@@ -63,32 +64,32 @@ public class TransactionResultSubscriber implements CommandLineRunner {
             }
         }, false);
 
-        log.info("Subscribed to transaction.result.>");
+        log.info("Subscribed to {}", NatsConstants.RESULT_ALL);
     }
 
     private void ensureStreams(JetStreamManagement jsm) throws Exception {
         try {
             jsm.addStream(StreamConfiguration.builder()
-                    .name("TRANSACTION_REQUEST")
-                    .subjects("transaction.deposit", "transaction.withdrawal")
+                    .name(NatsConstants.STREAM_REQUEST)
+                    .subjects(NatsConstants.DEPOSIT, NatsConstants.WITHDRAWAL)
                     .retentionPolicy(RetentionPolicy.WorkQueue)
                     .storageType(StorageType.File)
                     .build());
-            log.info("Created stream: TRANSACTION_REQUEST");
+            log.info("Created stream: {}", NatsConstants.STREAM_REQUEST);
         } catch (Exception e) {
-            log.info("Stream TRANSACTION_REQUEST already exists or error: {}", e.getMessage());
+            log.info("Stream {} already exists or error: {}", NatsConstants.STREAM_REQUEST, e.getMessage());
         }
 
         try {
             jsm.addStream(StreamConfiguration.builder()
-                    .name("TRANSACTION_RESULT")
-                    .subjects("transaction.result.>")
+                    .name(NatsConstants.STREAM_RESULT)
+                     .subjects(NatsConstants.RESULT_ALL)
                     .retentionPolicy(RetentionPolicy.WorkQueue)
                     .storageType(StorageType.File)
                     .build());
-            log.info("Created stream: TRANSACTION_RESULT");
+            log.info("Created stream: {}", NatsConstants.STREAM_RESULT);
         } catch (Exception e) {
-            log.info("Stream TRANSACTION_RESULT already exists or error: {}", e.getMessage());
+            log.info("Stream {} already exists or error: {}", NatsConstants.STREAM_RESULT, e.getMessage());
         }
     }
 }
