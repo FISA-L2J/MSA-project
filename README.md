@@ -1,31 +1,69 @@
 # MSA Project (FISA-L2J) - Cloud Native Migration
 
-Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 이커머스 데모 프로젝트입니다.  
+<img width="2816" height="1286" alt="MSA" src="https://github.com/user-attachments/assets/488575a0-c6f2-4559-8a03-cb13c019d287" />
+
+Spring Boot 기반의 마이크로서비스 아키텍처(MSA) 계좌·거래 데모 프로젝트입니다.  
 기존 VM 기반 배포에서 **Kubernetes(GKE) 및 Istio Service Mesh** 환경으로 마이그레이션되었습니다.
 
-주문(Order), 결제(Payment), 인증(Auth) 서비스로 구성되어 있으며, 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
+인증(Auth), 계좌(Account), 거래(Transaction) 서비스로 구성되어 있으며, 입금/출금 도메인과 서비스 간 통신, 장애 격리, 분산 트레이싱 등 MSA의 핵심 패턴들을 구현했습니다.
 
-## 🏗 아키텍처 및 기술 스택
+## 📌 목차
+
+* [1. 👤 팀원 소개](#team)
+* [2. 💡 주제 선정 배경](#background)
+* [3. 🏗 아키텍처 및 기술 스택](#architecture)
+* [4. 🚀 Cloud Native 배포 가이드](#deploy)
+* [5. 🌟 핵심 기능](#key-features)
+* [6. 📚 API 명세서](#api)
+* [7. 🚀 로컬 실행 방법](#local)
+* [8. 🛠 트러블슈팅](#troubleshooting)
+
+---
+
+<h2 id="team">1. 👤 팀원 소개 (Team Members)</h2>
+
+| <img src="https://github.com/chaeyuuu.png" width="150"> | <img src="https://github.com/woojinni.png" width="150"> | <img src="https://github.com/YongwanJoo.png" width="150"> |
+| :---: | :---: | :---: |
+| **이채유** | **장우진** | **주용완** |
+| [@chaeyuuu](https://github.com/chaeyuuu) | [@woojinni](https://github.com/woojinni) | [@YongwanJoo](https://github.com/YongwanJoo) |
+
+
+
+<br>
+
+<h2 id="background">2. 💡 주제 선정 배경 (Project Background)</h2>
+
+본 프로젝트는 **MSA와 Cloud Native 환경에 대한 학습**을 목표로 진행되었다.  
+단일 애플리케이션에서 **서비스 분리·독립 배포·트래픽 제어**를 경험하는 과정에서,  
+실제 GKE와 Istio 기반의 **운영 가능한 구조**를 구축하는 것이 목표이다.
+
+> "VM 기반 배포에서 Kubernetes와 Service Mesh로 어떻게 전환할 수 있을까?"  
+> 라는 질문에서 출발하여, **Auth / Account / Transaction** 도메인으로 분리된  
+> 입금·출금 파이프라인을 **GKE + Istio** 환경에서 동작하도록 설계하였다.
+
+<br>
+
+<h2 id="architecture">3. 🏗 아키텍처 및 기술 스택</h2>
 
 ### Infrastructure (Cloud Native)
 - **Cloud**: Google Cloud Platform (GKE Standard Cluster, Artifact Registry)
 - **IaC**: Terraform (GKE Cluster & Node Pool 프로비저닝)
 - **Service Mesh**: Istio (Traffic Management, Ingress Gateway)
 - **CI/CD**: GitHub Actions (Docker Build -> Artifact Registry -> GKE Deploy)
-- **RDBMS**: PostgreSQL (GKE 내 StatefulSet, Logical DB 분리: `auth_db`, `order_db`, `payment_db`)
+- **RDBMS**: PostgreSQL (GKE 내 StatefulSet, Logical DB 분리: `auth_db`, `account_db`, `transaction_db`)
 - **Cache**: Redis (Auth Service 토큰 관리)
 - **Tracing**: Zipkin (분산 트레이싱)
 
 ### Microservices
 | 서비스 | 기술 스택 | 주요 역할 | 포트 |
 | --- | --- | --- | --- |
-| **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 | 8082 |
-| **Order Service** | Spring Boot, OpenFeign, Resilience4j | 주문 생성, 결제 요청(Client), 서킷 브레이커 | 8080 |
-| **Payment Service** | Spring Boot, JPA | 결제 승인/거절 처리 | 8081 |
+| **Auth Service** | Spring Security, JWT(RS256), Redis | 사용자 가입/로그인/로그아웃, JWKS 공개키 제공 (Port: 8082) | 8082 |
+| **Account Service** | Spring Boot, OpenFeign, Resilience4j | 계좌/거래 요청, 입금·출금 API, 서킷 브레이커 | 8080 |
+| **Transaction Service** | Spring Boot, JPA | 잔액·거래 처리(입금/출금 실행) | 8081 |
 
 ---
 
-## 🚀 Cloud Native 배포 가이드 (GKE & Istio)
+<h2 id="deploy">4. 🚀 Cloud Native 배포 가이드 (GKE & Istio)</h2>
 
 이 프로젝트는 **Terraform**으로 GKE 클러스터를 생성하고, **GitHub Actions**로 자동 배포(CD)를 수행합니다.
 
@@ -71,7 +109,7 @@ Istio Ingress Gateway의 External IP를 확인하여 접속합니다.
 
 ```bash
 kubectl get svc istio-ingressgateway -n istio-system
-# EXTERNAL-IP 확인 후: http://<EXTERNAL-IP>/orders
+# EXTERNAL-IP 확인 후: http://<EXTERNAL-IP>/account
 ```
 
 **Kiali 대시보드 (Service Mesh 시각화)**:
@@ -81,26 +119,26 @@ istioctl dashboard kiali
 
 ---
 
-## 🌟 핵심 기능 (Key Features)
+<h2 id="key-features">5. 🌟 핵심 기능 (Key Features)</h2>
 
 ### 1. Istio Service Mesh
 - **Traffic Management**: `Istio Gateway`를 통해 모든 외부 트래픽을 단일 진입점으로 관리합니다.
 - **Sidecar Proxy**: 각 서비스 파드에 Envoy 프록시가 주입되어 트래픽을 가로채고 제어합니다.
 
 ### 2. Token Propagation (토큰 전파)
-- **FeignClientInterceptor**를 통해 `Order Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Payment Service`로 전달합니다.
+- **FeignClientInterceptor**를 통해 `Account Service`로 들어온 요청의 JWT 토큰을 추출하여, 내부적으로 호출하는 `Transaction Service`로 전달합니다.
 - 이를 통해 마이크로서비스 간의 호출에서도 **사용자 인증 정보(User Context)가 끊기지 않고 유지**됩니다.
 
 ### 3. Resilience (회복 탄력성)
-- **Circuit Breaker**: `Payment Service` 장애 시 `Order Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Order Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
+- **Circuit Breaker**: `Transaction Service` 장애 시 `Account Service`의 **Resilience4j**가 동작하여 장애 전파를 차단합니다. Account Service는 Fallback 응답을 반환하여 시스템 전체 중단을 방지합니다.
 
 ### 4. Database Isolation
-- 단일 PostgreSQL 파드 내에서 `auth_db`, `order_db`, `payment_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
+- 단일 PostgreSQL 파드 내에서 `auth_db`, `account_db`, `transaction_db`로 논리적 분리를 구현했습니다. (Database-per-service 패턴 준수)
 - `k8s/secret.yaml`을 통해 DB 자격증명을 안전하게 관리합니다.
 
 ---
 
-## 📚 API 명세서 (API Documentation)
+<h2 id="api">6. 📚 API 명세서 (API Documentation)</h2>
 
 ### 1. Auth Service (Port: 8082)
 사용자 인증 및 JWT 토큰 관리
@@ -139,94 +177,145 @@ istioctl dashboard kiali
 
 ---
 
-### 2. Order Service (Port: 8080)
-주문 관리 및 결제 서비스 호출 (Requires JWT Authentication)
+### 2. Account Service (Port: 8080)
+계좌 거래 요청 - 입금/출금 (Requires JWT Authentication)
 
 > **Note**: 모든 요청의 Header에 `Authorization: Bearer <Token>`이 필요합니다.
+> 클라이언트는 **amount만** 전송하며, **userId는 서버에서 JWT로 추출**하여 Transaction Service 요청에 포함합니다.
 
-#### 주문 생성
-- **URL**: `POST /order`
+#### 입금 (Deposit)
+- **URL**: `POST /account/deposit`
 - **Request**:
   ```json
   {
-    "productId": 101,
-    "productName": "Laptop",
-    "quantity": 1,
-    "unitPrice": 1500000,
-    "paymentMethod": "CREDIT_CARD" // [CREDIT_CARD, CASH, EASY_PAYMENT]
+    "amount": 10000
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "orderId": 1,
+    "transactionId": 1,
+    "transactionId": 1,
+    "userId": "testuser",
+    "amount": 10000,
+    "newBalance": 10000,
+    "status": "SUCCESS",
+    "createdAt": "..."
+  }
+  ```
+- **Circuit Open 시 (Transaction Service 장애)**: Resilience4j Fallback 응답 예시
+  ```json
+  {
     "userId": 1,
-    "status": "COMPLETED", // 결제 성공 시
-    "totalAmount": 1500000,
+    "amount": 10000,
+    "newBalance": 0,
+    "status": "FAILED"
+  }
+  ```
+
+#### 출금 (Withdrawal)
+- **URL**: `POST /account/withdrawal`
+- **Request**:
+  ```json
+  {
+    "amount": 5000
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "transactionId": 2,
+    "userId": 1,
+    "amount": 5000,
+    "newBalance": 5000,
+    "status": "SUCCESS",
+    "createdAt": "..."
+  }
+  ```
+- **Circuit Open 시 (Transaction Service 장애)**: Fallback 응답 예시 — `status: "FAILED"`, `newBalance: 0`
+- **Note**: 잔액 부족 시 `400 Bad Request` (Transaction Service에서 처리). 에러 본문 예: `"Insufficient balance. Current: 1000, Requested: 5000"`
+
+---
+
+### 3. Transaction Service (Port: 8081)
+잔액·거래 처리 (일반적으로 Account Service에서 내부 호출). Account Service가 **TransactionProcessRequest**(userId, amount)를 가공하여 전달합니다.
+
+#### 입금 처리 (내부)
+- **URL**: `POST /transaction/deposit`
+- **Request** (Account Service가 JWT에서 추출한 userId와 클라이언트 amount를 조합하여 전송):
+  ```json
+  {
+    "userId": "testuser",
+    "amount": 10000
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "transactionId": 1,
+    "newBalance": 10000,
+    "status": "SUCCESS",
     "createdAt": "..."
   }
   ```
 
----
-
-### 3. Payment Service (Port: 8081)
-결제 처리 (일반적으로 내부 서비스에서 호출됨)
-
-#### 결제 승인
-- **URL**: `POST /payment/process`
+#### 출금 처리 (내부)
+- **URL**: `POST /transaction/withdrawal`
 - **Request**:
   ```json
   {
-    "orderId": 1,
     "userId": 1,
-    "amount": 1500000,
-    "paymentMethod": "CREDIT_CARD"
+    "amount": 5000
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "paymentId": 1,
+    "transactionId": 2,
+    "newBalance": 5000,
     "status": "SUCCESS",
-    "orderId": 1
+    "createdAt": "..."
   }
   ```
+- **잔액 부족 시**: `400 Bad Request`, 본문 예시: `"Insufficient balance. Current: 1000, Requested: 5000"` (GlobalExceptionHandler가 InsufficientBalanceException 메시지를 그대로 반환)
 
 ---
 
-## 🚀 로컬 실행 방법 (Local Development)
+<h2 id="local">7. 🚀 로컬 실행 방법 (Local Development)</h2>
 
-### 1. 인프라 실행 (Docker)
-프로젝트 루트에서 `docker-compose`를 사용하여 로컬 DB 등을 실행합니다.
+### 1. 자동 설정 스크립트 사용 (권장)
+프로젝트 루트에서 제공되는 `guide_setup.sh` 스크립트를 사용하면, `.env.local` 파일 생성과 로컬 키 발급, Docker 인프라 실행을 한 번에 처리해줍니다.
 
 ```bash
-docker-compose up -d
-docker ps
-# Postgres(5432), Zipkin(9411), Redis(6379) 확인
+# 실행 권한 부여
+chmod +x scripts/guide_setup.sh
+
+# 스크립트 실행 (DB 비밀번호 설정 가능)
+DB_PASSWORD=your_secure_password ./scripts/guide_setup.sh
 ```
 
 ### 2. 서비스 실행
- **중요**: 각 서비스는 루트 디렉토리(`MSA-project`)에서 아래 명령어로 실행해야 합니다. (환경변수 포함)
+인프라(DB, Redis 등)가 준비되면, 생성된 `.env.local`을 로드하여 각 서비스를 실행합니다. 터미널 3개를 열어 각각 실행하세요.
 
-#### Auth Service
+#### Auth Service (Terminal 1)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :auth-service:bootRun
+source .env.local && ./gradlew :auth-service:bootRun
 ```
 
-#### Payment Service
+#### Account Service (Terminal 2)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :payment-service:bootRun
+source .env.local && ./gradlew :account-service:bootRun
 ```
 
-#### Order Service
+#### Transaction Service (Terminal 3)
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :order-service:bootRun
+source .env.local && ./gradlew :transaction-service:bootRun
 ```
-*모든 서비스를 띄워야 전체 흐름 테스트가 가능합니다.*
+*모든 서비스를 띄워야 전체 흐름(로그인 → 입금/출금) 테스트가 가능합니다.*
 
 ---
 
-## 🛠️ 트러블 슈팅 (Troubleshooting)
+<h2 id="troubleshooting">8. 🛠 트러블슈팅 (Troubleshooting)</h2>
 
 ### 1. Cloud & Infrastructure (GKE, Terraform)
 
@@ -266,7 +355,7 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
 ### 4. Application Verification (Runtime & Logic)
 
 #### 🔴 Build Configuration - Redundant Plugin
-- **Issue**: `Order Service` 실행 시 빌드 실패.
+- **Issue**: `Account Service` 등 서비스 실행 시 빌드 실패.
 - **Cause**: 루트 프로젝트(`build.gradle`)의 `subprojects` 블록과 각 서비스의 `build.gradle`에 동일한 플러그인(`java`, `org.springframework.boot`)이 중복 선언됨.
 - **Solution**: 하위 모듈의 `build.gradle`에서 중복되는 플러그인 선언 제거.
 
@@ -289,6 +378,6 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
 - **Issue 1**: 회원가입 요청 시 `404 Not Found`.
   - **Cause**: `Auth Service`에 `/auth/signup` 엔드포인트가 아예 구현되어 있지 않았음.
   - **Solution**: `AuthService` 및 `AuthController`에 회원가입 로직 추가 구현.
-- **Issue 2**: 주문 요청 시 `403 Forbidden`.
+- **Issue 2**: 입금/출금 요청 시 `403 Forbidden`.
   - **Cause**: `Authorization` 헤더에 JWT 토큰 문자열만 넣어야 하는데, JSON 응답 전체(`{"accessToken":...}`)를 넣음.
   - **Solution**: `curl` 및 `python` 파싱을 통해 `accessToken` 값만 정확히 추출하여 헤더에 주입.

@@ -9,7 +9,7 @@ spec:
       istio: ingressgateway # Apply to Ingress Gateway
   jwtRules:
     - issuer: "auth-service"
-      jwksUri: "http://auth-service.msa-project.svc.cluster.local:8080/.well-known/jwks.json"
+      jwksUri: "http://auth-service.msa-project.svc.cluster.local:8082/.well-known/jwks.json"
       forwardOriginalToken: true # Pass token to application for application-level handling if needed (e.g. context propagation)
 
 ---
@@ -35,4 +35,4 @@ spec:
             requestPrincipals: ["*"] # Requires any valid JWT
       to:
         - operation:
-            paths: ["/orders*", "/payments*"]
+            paths: ["/account*"]

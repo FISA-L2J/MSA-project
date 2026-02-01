@@ -6,8 +6,8 @@ metadata:
 data:
   init.sql: |
     CREATE DATABASE auth_db;
-    CREATE DATABASE order_db;
-    CREATE DATABASE payment_db;
+    CREATE DATABASE account_db;
+    CREATE DATABASE transaction_db;
     GRANT ALL PRIVILEGES ON DATABASE auth_db TO "user";
-    GRANT ALL PRIVILEGES ON DATABASE order_db TO "user";
-    GRANT ALL PRIVILEGES ON DATABASE payment_db TO "user";
+    GRANT ALL PRIVILEGES ON DATABASE account_db TO "user";
+    GRANT ALL PRIVILEGES ON DATABASE transaction_db TO "user";
