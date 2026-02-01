@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @Data
 @Builder
 public class TransactionProcessRequest {
+	private Long recordId;
 	private Long userId;
 	private BigDecimal amount;
 }

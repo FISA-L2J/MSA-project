@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransactionProcessResponse {
+	private Long recordId;
 	private Long transactionId;
 	private BigDecimal newBalance;
 	private Status status;

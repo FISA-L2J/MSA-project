@@ -44,6 +44,7 @@ public class TransactionService {
 		log.info("Deposit completed. transactionId: {}, newBalance: {}", savedTransaction.getId(), balance.getBalance());
 
 		return TransactionProcessResponse.builder()
+				.recordId(request.getRecordId())
 				.transactionId(savedTransaction.getId())
 				.newBalance(balance.getBalance())
 				.status(Status.SUCCESS)
@@ -75,6 +76,7 @@ public class TransactionService {
 		log.info("Withdrawal completed. transactionId: {}, newBalance: {}", savedTransaction.getId(), balance.getBalance());
 
 		return TransactionProcessResponse.builder()
+				.recordId(request.getRecordId())
 				.transactionId(savedTransaction.getId())
 				.newBalance(balance.getBalance())
 				.status(Status.SUCCESS)
