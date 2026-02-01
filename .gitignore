@@ -13,3 +13,6 @@ application-local.yml
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+# Local Development
+.env.local
+scripts/local_setup.sh

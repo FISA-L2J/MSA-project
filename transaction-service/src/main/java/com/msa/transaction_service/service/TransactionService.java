@@ -27,7 +27,7 @@ public class TransactionService {
 
 	@Transactional
 	public TransactionProcessResponse processDeposit(TransactionProcessRequest request) {
-		Long userId = request.getUserId();
+		String userId = request.getUserId();
 		BigDecimal amount = request.getAmount();
 
 		log.info("Processing deposit for userId: {}, amount: {}", userId, amount);
@@ -41,7 +41,8 @@ public class TransactionService {
 		Transaction transaction = Transaction.create(userId, TransactionType.DEPOSIT, amount, balance.getBalance());
 		Transaction savedTransaction = transactionRepository.save(transaction);
 
-		log.info("Deposit completed. transactionId: {}, newBalance: {}", savedTransaction.getId(), balance.getBalance());
+		log.info("Deposit completed. transactionId: {}, newBalance: {}", savedTransaction.getId(),
+				balance.getBalance());
 
 		return TransactionProcessResponse.builder()
 				.recordId(request.getRecordId())
@@ -54,7 +55,7 @@ public class TransactionService {
 
 	@Transactional
 	public TransactionProcessResponse processWithdrawal(TransactionProcessRequest request) {
-		Long userId = request.getUserId();
+		String userId = request.getUserId();
 		BigDecimal amount = request.getAmount();
 
 		log.info("Processing withdrawal for userId: {}, amount: {}", userId, amount);
@@ -63,8 +64,10 @@ public class TransactionService {
 				.orElseGet(() -> balanceRepository.save(Balance.createForUser(userId)));
 
 		if (balance.getBalance().compareTo(amount) < 0) {
-			log.warn("Insufficient balance for userId: {}. balance: {}, requested: {}", userId, balance.getBalance(), amount);
-			throw new InsufficientBalanceException("Insufficient balance. Current: " + balance.getBalance() + ", Requested: " + amount);
+			log.warn("Insufficient balance for userId: {}. balance: {}, requested: {}", userId, balance.getBalance(),
+					amount);
+			throw new InsufficientBalanceException(
+					"Insufficient balance. Current: " + balance.getBalance() + ", Requested: " + amount);
 		}
 
 		balance.subtract(amount);
@@ -73,7 +76,8 @@ public class TransactionService {
 		Transaction transaction = Transaction.create(userId, TransactionType.WITHDRAWAL, amount, balance.getBalance());
 		Transaction savedTransaction = transactionRepository.save(transaction);
 
-		log.info("Withdrawal completed. transactionId: {}, newBalance: {}", savedTransaction.getId(), balance.getBalance());
+		log.info("Withdrawal completed. transactionId: {}, newBalance: {}", savedTransaction.getId(),
+				balance.getBalance());
 
 		return TransactionProcessResponse.builder()
 				.recordId(request.getRecordId())

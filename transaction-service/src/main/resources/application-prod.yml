@@ -12,6 +12,11 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://auth-service.msa-project.svc.cluster.local:8082/.well-known/jwks.json
 
 management:
   zipkin:

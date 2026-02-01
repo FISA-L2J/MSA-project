@@ -31,10 +31,25 @@ public class AccountService {
 
 
 	@Transactional
-	public Account ensureAccountForUser(Long userId) {
+	public AccountResponse createAccount(CreateAccountRequest request) {
+		// In a real app we might check if user already exists
+		Account account = Account.createAccount(request.getUserId(),
+				ACCOUNT_NUMBER_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+		account.setBalance(new BigDecimal(request.getInitialBalance()));
+		Account savedAccount = accountRepository.save(account);
+		return AccountResponse.builder()
+				.accountId(savedAccount.getId())
+				.userId(savedAccount.getUserId())
+				.balance(savedAccount.getBalance().intValue())
+				.build();
+	}
+
+	@Transactional
+	public Account ensureAccountForUser(String userId) {
 		return accountRepository.findByUserId(userId)
 				.orElseGet(() -> {
-					Account account = Account.createAccount(userId, ACCOUNT_NUMBER_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+					Account account = Account.createAccount(userId,
+							ACCOUNT_NUMBER_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
 					return accountRepository.save(account);
 				});
 	}
@@ -42,7 +57,7 @@ public class AccountService {
 	@Transactional
 	@CircuitBreaker(name = "natsPublish", fallbackMethod = "depositFallback")
 	public DepositResponse deposit(DepositRequest request) {
-		Long userId = getAuthenticatedUserId();
+		String userId = getAuthenticatedUserId();
 		ensureAccountForUser(userId);
 
 		TransactionRecord record = transactionRecordRepository.save(
@@ -86,7 +101,7 @@ public class AccountService {
 	@Transactional
 	@CircuitBreaker(name = "natsPublish", fallbackMethod = "withdrawalFallback")
 	public WithdrawalResponse withdrawal(WithdrawalRequest request) {
-		Long userId = getAuthenticatedUserId();
+		String userId = getAuthenticatedUserId();
 		ensureAccountForUser(userId);
 
 		TransactionRecord record = transactionRecordRepository.save(
@@ -126,8 +141,9 @@ public class AccountService {
 				.build();
 	}
 
-	private Long getAuthenticatedUserId() {
-		String userIdStr = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		return Long.parseLong(userIdStr);
+	private String getAuthenticatedUserId() {
+		org.springframework.security.oauth2.jwt.Jwt jwt = (org.springframework.security.oauth2.jwt.Jwt) SecurityContextHolder
+				.getContext().getAuthentication().getPrincipal();
+		return jwt.getSubject();
 	}
 }

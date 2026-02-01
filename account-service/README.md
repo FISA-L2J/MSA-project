@@ -23,10 +23,11 @@ docker-compose up -d
 ```
 
 ### 로컬 실행
-**반드시 루트 디렉토리(`MSA-project`)에서** 실행하세요.
+**반드시 루트 디렉토리(`MSA-project`)에서** 제공된 스크립트로 환경변수를 로드하여 실행하세요.
 
 ```bash
-POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_password ZIPKIN_PORT=9411 REDIS_PORT=6379 JWT_SECRET=your_jwt_secret ./gradlew :account-service:bootRun
+# Terminal 2
+source .env.local && ./gradlew :account-service:bootRun
 ```
 
 실행 후 `http://localhost:8080`에서 서비스가 동작합니다.
@@ -48,7 +49,7 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
   ```json
   {
     "transactionId": 1,
-    "userId": 1,
+    "userId": "testuser",
     "amount": 10000,
     "newBalance": 10000,
     "status": "SUCCESS",
@@ -70,7 +71,7 @@ POSTGRES_PORT=5432 POSTGRES_DB=msa_db POSTGRES_USER=user POSTGRES_PASSWORD=your_
   ```json
   {
     "transactionId": 2,
-    "userId": 1,
+    "userId": "testuser",
     "amount": 5000,
     "newBalance": 5000,
     "status": "SUCCESS",

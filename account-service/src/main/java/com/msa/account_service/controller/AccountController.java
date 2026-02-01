@@ -1,5 +1,7 @@
 package com.msa.account_service.controller;
 
+import com.msa.account_service.dto.AccountResponse;
+import com.msa.account_service.dto.CreateAccountRequest;
 import com.msa.account_service.dto.DepositRequest;
 import com.msa.account_service.dto.DepositResponse;
 import com.msa.account_service.dto.WithdrawalRequest;
@@ -20,6 +22,12 @@ import jakarta.validation.Valid;
 public class AccountController {
 
 	private final AccountService accountService;
+
+	@PostMapping
+	public ResponseEntity<AccountResponse> createAccount(@RequestBody @Valid CreateAccountRequest request) {
+		AccountResponse response = accountService.createAccount(request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
 
 	@PostMapping("/deposit")
 	public ResponseEntity<DepositResponse> deposit(@RequestBody @Valid DepositRequest request) {
