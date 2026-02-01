@@ -4,7 +4,6 @@ server:
 logging:
   level:
     com.msa.account_service: DEBUG
-    com.msa.account_service.client.TransactionClient: DEBUG
 
 spring:
   jwt:
@@ -37,6 +36,9 @@ management:
       exposure:
         include: health, info, prometheus
 
+nats:
+  url: nats://localhost:4222
+
 resilience4j:
   circuitbreaker:
     configs:
@@ -50,5 +52,5 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 2
         automaticTransitionFromOpenToHalfOpenEnabled: true
     instances:
-      transactionService:
+      natsPublish:
         baseConfig: default

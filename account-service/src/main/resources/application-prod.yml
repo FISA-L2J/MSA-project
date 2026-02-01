@@ -1,9 +1,8 @@
 server:
   shutdown: graceful
 
-transaction:
-  service:
-    url: ${TRANSACTION_SERVICE_URL:http://transaction-service:8081}
+nats:
+  url: ${NATS_URL:nats://nats:4222}
 
 spring:
   datasource:

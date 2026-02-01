@@ -27,6 +27,17 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     restart: unless-stopped
 
+  nats:
+    image: nats:latest
+    container_name: msa-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222" # 모니터링용
+    restart: unless-stopped
+    command: --jetstream --store_dir=/data
+    volumes:
+      - nats-data:/data
+
   # Application Services
   auth-service:
     image: asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID:-msa-project-prod}/msa-repo/auth-service:latest
@@ -45,10 +56,12 @@ services:
       - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:${ZIPKIN_PORT:-9411}/api/v2/spans
       - JWT_SECRET=${JWT_SECRET}
+      - NATS_URL=nats://nats:4222
     depends_on:
       - postgres
       - redis
       - zipkin
+      - nats
     restart: unless-stopped
 
   account-service:
@@ -80,7 +93,12 @@ services:
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:${ZIPKIN_PORT:-9411}/api/v2/spans
+      - NATS_URL=nats://nats:4222
     depends_on:
       - postgres
       - zipkin
+      - nats
     restart: unless-stopped
+
+volumes:
+  nats-data:

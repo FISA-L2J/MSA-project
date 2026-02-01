@@ -1,9 +1,13 @@
 server:
   port: 8081
 
+nats:
+  url: nats://localhost:4222
+
 spring:
   application:
     name: transaction-service
+
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:msa_db}
     username: ${POSTGRES_USER}
