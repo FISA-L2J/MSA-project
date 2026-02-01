@@ -80,6 +80,7 @@ services:
     depends_on:
       - postgres
       - zipkin
+      - nats
     restart: unless-stopped
 
   transaction-service:
