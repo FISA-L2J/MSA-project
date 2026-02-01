@@ -19,7 +19,7 @@ public class TransactionRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    private String userId;
     private BigDecimal amount;
     private String type; // DEPOSIT, WITHDRAWAL
 
@@ -30,7 +30,7 @@ public class TransactionRecord {
     private LocalDateTime updatedAt;
 
     @Builder
-    public TransactionRecord(Long userId, BigDecimal amount, String type, Status status) {
+    public TransactionRecord(String userId, BigDecimal amount, String type, Status status) {
         this.userId = userId;
         this.amount = amount;
         this.type = type;
