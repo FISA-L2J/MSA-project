@@ -74,7 +74,7 @@ public class TransactionEventSubscriber implements CommandLineRunner {
         int maxRetries = 10;
         for (int i = 0; i < maxRetries; i++) {
             try {
-                jsm.getStreamInfo("TRANSACTION_REQUEST");  // ✅ 다른 스트림 이름
+                jsm.getStreamInfo("TRANSACTION_REQUEST");
                 log.info("Stream TRANSACTION_REQUEST found");
                 return;
             } catch (Exception e) {

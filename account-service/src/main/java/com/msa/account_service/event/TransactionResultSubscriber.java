@@ -32,7 +32,6 @@ public class TransactionResultSubscriber implements CommandLineRunner {
         JetStream js = natsConnection.jetStream();
         Dispatcher dispatcher = natsConnection.createDispatcher();
 
-        // ✅ 스트림 직접 생성 (없으면 생성, 있으면 무시)
         ensureStreams(jsm);
 
         js.subscribe("transaction.result.>", dispatcher, msg -> {
@@ -67,7 +66,6 @@ public class TransactionResultSubscriber implements CommandLineRunner {
         log.info("Subscribed to transaction.result.>");
     }
 
-    // ✅ 스트림 생성
     private void ensureStreams(JetStreamManagement jsm) throws Exception {
         try {
             jsm.addStream(StreamConfiguration.builder()
