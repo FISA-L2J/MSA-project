@@ -1,10 +1,12 @@
 package com.msa.account_service.service;
 
-import com.msa.account_service.client.TransactionClient;
 import com.msa.account_service.domain.Account;
 import com.msa.account_service.domain.Status;
+import com.msa.account_service.domain.TransactionRecord;
 import com.msa.account_service.dto.*;
+import com.msa.account_service.event.TransactionEventPublisher;
 import com.msa.account_service.repository.AccountRepository;
+import com.msa.account_service.repository.TransactionRecordRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
@@ -23,7 +26,9 @@ public class AccountService {
 	private static final String ACCOUNT_NUMBER_PREFIX = "ACC-";
 
 	private final AccountRepository accountRepository;
-	private final TransactionClient transactionClient;
+	private final TransactionEventPublisher transactionEventPublisher;
+	private final TransactionRecordRepository transactionRecordRepository;
+
 
 	@Transactional
 	public Account ensureAccountForUser(Long userId) {
@@ -35,27 +40,37 @@ public class AccountService {
 	}
 
 	@Transactional
-	@CircuitBreaker(name = "transactionService", fallbackMethod = "depositFallback")
+	@CircuitBreaker(name = "natsPublish", fallbackMethod = "depositFallback")
 	public DepositResponse deposit(DepositRequest request) {
 		Long userId = getAuthenticatedUserId();
 		ensureAccountForUser(userId);
 
+		TransactionRecord record = transactionRecordRepository.save(
+				TransactionRecord.builder()
+						.userId(userId)
+						.amount(request.getAmount())
+						.type("DEPOSIT")
+						.status(Status.PENDING)
+						.build());
+
 		TransactionProcessRequest processRequest = TransactionProcessRequest.builder()
+				.recordId(record.getId())
 				.userId(userId)
 				.amount(request.getAmount())
 				.build();
 
 		log.info("Requesting deposit for userId: {}, amount: {}", userId, request.getAmount());
-		TransactionProcessResponse response = transactionClient.processDeposit(processRequest);
+
+        transactionEventPublisher.publishDeposit(processRequest);
 
 		return DepositResponse.builder()
-				.transactionId(response.getTransactionId())
-				.userId(userId)
-				.amount(request.getAmount())
-				.newBalance(response.getNewBalance())
-				.status(response.getStatus())
-				.createdAt(response.getCreatedAt())
-				.build();
+				.transactionId(record.getId())
+                .userId(userId)
+                .amount(request.getAmount())
+                .newBalance(BigDecimal.ZERO)
+                .status(Status.PENDING)
+                .createdAt(record.getCreatedAt())
+                .build();
 	}
 
 	public DepositResponse depositFallback(DepositRequest request, Throwable t) {
@@ -69,26 +84,35 @@ public class AccountService {
 	}
 
 	@Transactional
-	@CircuitBreaker(name = "transactionService", fallbackMethod = "withdrawalFallback")
+	@CircuitBreaker(name = "natsPublish", fallbackMethod = "withdrawalFallback")
 	public WithdrawalResponse withdrawal(WithdrawalRequest request) {
 		Long userId = getAuthenticatedUserId();
 		ensureAccountForUser(userId);
 
+		TransactionRecord record = transactionRecordRepository.save(
+				TransactionRecord.builder()
+						.userId(userId)
+						.amount(request.getAmount())
+						.type("WITHDRAWAL")
+						.status(Status.PENDING)
+						.build());
+
 		TransactionProcessRequest processRequest = TransactionProcessRequest.builder()
+				.recordId(record.getId())
 				.userId(userId)
 				.amount(request.getAmount())
 				.build();
 
 		log.info("Requesting withdrawal for userId: {}, amount: {}", userId, request.getAmount());
-		TransactionProcessResponse response = transactionClient.processWithdrawal(processRequest);
+        transactionEventPublisher.publishWithdrawal(processRequest);
 
 		return WithdrawalResponse.builder()
-				.transactionId(response.getTransactionId())
+				.transactionId(record.getId())
 				.userId(userId)
 				.amount(request.getAmount())
-				.newBalance(response.getNewBalance())
-				.status(response.getStatus())
-				.createdAt(response.getCreatedAt())
+				.newBalance(BigDecimal.ZERO)
+				.status(Status.PENDING)
+				.createdAt(record.getCreatedAt())
 				.build();
 	}
 
