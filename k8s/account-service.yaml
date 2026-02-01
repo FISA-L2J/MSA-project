@@ -16,37 +16,39 @@ spec:
         app: account-service
     spec:
       containers:
-      - name: account-service
-        image: asia-northeast3-docker.pkg.dev/msa-project-prod/msa-repo/account-service:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: "prod"
-        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-          value: "update"
-        - name: SPRING_DATASOURCE_URL
-          value: "jdbc:postgresql://postgres:5432/account_db"
-        - name: SPRING_DATASOURCE_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: msa-secrets
-              key: postgres-user
-        - name: SPRING_DATASOURCE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: msa-secrets
-              key: postgres-password
-        - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
-          value: "http://zipkin:9411/api/v2/spans"
-        - name: TRANSACTION_SERVICE_URL
-          value: "http://transaction-service:8081"
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: msa-secrets
-              key: jwt-secret
+        - name: account-service
+          image: asia-northeast3-docker.pkg.dev/msa-project-prod/msa-repo/account-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: "update"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/account_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: msa-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: msa-secrets
+                  key: postgres-password
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
+            - name: TRANSACTION_SERVICE_URL
+              value: "http://transaction-service:8081"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: msa-secrets
+                  key: jwt-secret
 ---
 apiVersion: v1
 kind: Service
@@ -57,6 +59,6 @@ spec:
   selector:
     app: account-service
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
   type: ClusterIP
