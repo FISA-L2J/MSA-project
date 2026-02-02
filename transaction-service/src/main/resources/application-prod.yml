@@ -23,6 +23,9 @@ management:
     tracing:
       endpoint: "http://${ZIPKIN_HOST}:${ZIPKIN_PORT}/api/v2/spans"
 
+nats:
+  url: ${NATS_URL:nats://nats:4222}
+
 logging:
   level:
     root: INFO

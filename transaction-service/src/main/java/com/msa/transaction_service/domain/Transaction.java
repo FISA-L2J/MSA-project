@@ -15,36 +15,41 @@ import java.time.LocalDateTime;
 @Table(name = "transactions")
 public class Transaction {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	private String userId;
+    @Column(nullable = false, unique = true)
+    private Long recordId;
 
-	@Enumerated(EnumType.STRING)
-	private TransactionType type;
+    private String userId;
 
-	private BigDecimal amount;
-	private BigDecimal balanceAfter;
-	private LocalDateTime createdAt;
+    @Enumerated(EnumType.STRING)
+    private TransactionType type;
 
-	@Builder
-	public Transaction(String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
-			LocalDateTime createdAt) {
-		this.userId = userId;
-		this.type = type;
-		this.amount = amount;
-		this.balanceAfter = balanceAfter;
-		this.createdAt = createdAt;
-	}
+    private BigDecimal amount;
+    private BigDecimal balanceAfter;
+    private LocalDateTime createdAt;
 
-	public static Transaction create(String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter) {
-		return Transaction.builder()
-				.userId(userId)
-				.type(type)
-				.amount(amount)
-				.balanceAfter(balanceAfter)
-				.createdAt(LocalDateTime.now())
-				.build();
-	}
+    @Builder
+    public Transaction(Long recordId, String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
+                       LocalDateTime createdAt) {
+        this.recordId = recordId;
+        this.userId = userId;
+        this.type = type;
+        this.amount = amount;
+        this.balanceAfter = balanceAfter;
+        this.createdAt = createdAt;
+    }
+
+    public static Transaction create(Long recordId, String userId, TransactionType type, BigDecimal amount, BigDecimal balanceAfter) {
+        return Transaction.builder()
+                .recordId(recordId)
+                .userId(userId)
+                .type(type)
+                .amount(amount)
+                .balanceAfter(balanceAfter)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
 }
