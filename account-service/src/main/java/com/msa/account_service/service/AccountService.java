@@ -29,7 +29,6 @@ public class AccountService {
 	private final TransactionEventPublisher transactionEventPublisher;
 	private final TransactionRecordRepository transactionRecordRepository;
 
-
 	@Transactional
 	public AccountResponse createAccount(CreateAccountRequest request) {
 		// In a real app we might check if user already exists
@@ -76,16 +75,16 @@ public class AccountService {
 
 		log.info("Requesting deposit for userId: {}, amount: {}", userId, request.getAmount());
 
-        transactionEventPublisher.publishDeposit(processRequest);
+		transactionEventPublisher.publishDeposit(processRequest);
 
 		return DepositResponse.builder()
 				.transactionId(record.getId())
-                .userId(userId)
-                .amount(request.getAmount())
-                .newBalance(BigDecimal.ZERO)
-                .status(Status.PENDING)
-                .createdAt(record.getCreatedAt())
-                .build();
+				.userId(userId)
+				.amount(request.getAmount())
+				.newBalance(BigDecimal.ZERO)
+				.status(Status.PENDING)
+				.createdAt(record.getCreatedAt())
+				.build();
 	}
 
 	public DepositResponse depositFallback(DepositRequest request, Throwable t) {
@@ -119,7 +118,7 @@ public class AccountService {
 				.build();
 
 		log.info("Requesting withdrawal for userId: {}, amount: {}", userId, request.getAmount());
-        transactionEventPublisher.publishWithdrawal(processRequest);
+		transactionEventPublisher.publishWithdrawal(processRequest);
 
 		return WithdrawalResponse.builder()
 				.transactionId(record.getId())
@@ -138,6 +137,17 @@ public class AccountService {
 				.amount(request.getAmount())
 				.newBalance(BigDecimal.ZERO)
 				.status(Status.FAILED)
+				.build();
+	}
+
+	@Transactional(readOnly = true)
+	public AccountResponse getAccount() {
+		String userId = getAuthenticatedUserId();
+		Account account = ensureAccountForUser(userId);
+		return AccountResponse.builder()
+				.accountId(account.getId())
+				.userId(account.getUserId())
+				.balance(account.getBalance().intValue())
 				.build();
 	}
 

@@ -29,6 +29,12 @@ public class AccountController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
+	@GetMapping
+	public ResponseEntity<AccountResponse> getAccount() {
+		AccountResponse response = accountService.getAccount();
+		return ResponseEntity.ok(response);
+	}
+
 	@PostMapping("/deposit")
 	public ResponseEntity<DepositResponse> deposit(@RequestBody @Valid DepositRequest request) {
 		log.info("Received deposit request");

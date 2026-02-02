@@ -5,6 +5,8 @@ import com.msa.account_service.constatns.NatsConstants;
 import com.msa.account_service.domain.Status;
 import com.msa.account_service.domain.TransactionRecord;
 import com.msa.account_service.dto.TransactionProcessResponse;
+import com.msa.account_service.domain.Account;
+import com.msa.account_service.repository.AccountRepository;
 import com.msa.account_service.repository.TransactionRecordRepository;
 import io.nats.client.*;
 import io.nats.client.api.ConsumerConfiguration;
@@ -29,6 +31,7 @@ public class TransactionResultSubscriber implements CommandLineRunner {
     private final Connection natsConnection;
     private final ObjectMapper objectMapper;
     private final TransactionRecordRepository transactionRecordRepository;
+    private final AccountRepository accountRepository;
 
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -93,6 +96,16 @@ public class TransactionResultSubscriber implements CommandLineRunner {
             // 상태 업데이트
             if (response.getStatus() == Status.SUCCESS) {
                 record.updateStatus(Status.SUCCESS);
+
+                // 계좌 잔액 업데이트 추가
+                Account account = accountRepository.findByUserId(record.getUserId())
+                        .orElseThrow(() -> new RuntimeException("Account not found for userId: " + record.getUserId()));
+
+                if (response.getNewBalance() != null) {
+                    account.setBalance(response.getNewBalance());
+                    accountRepository.save(account);
+                    log.info("Updated account balance for user {} to {}", record.getUserId(), response.getNewBalance());
+                }
             } else {
                 record.updateStatus(Status.FAILED);
             }
