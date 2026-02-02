@@ -117,9 +117,20 @@ kubectl get svc istio-ingressgateway -n istio-system
 istioctl dashboard kiali
 ```
 
+**Grafana 대시보드 (매트릭 시각화)**:
+```bash
+# 1. 포트 포워딩
+kubectl port-forward svc/grafana 3000:3000 -n istio-system
+
+# 2. 접속: http://localhost:3000 (ID: admin / PW: admin)
+# 3. 대시보드 추가: 'Import' 메뉴 -> ID '7639' (Istio Mesh Dashboard) 입력
+```
+
 ---
 
 <h2 id="key-features">5. 🌟 핵심 기능 (Key Features)</h2>
+
+
 
 ### 1. Istio Service Mesh
 - **Traffic Management**: `Istio Gateway`를 통해 모든 외부 트래픽을 단일 진입점으로 관리합니다.
@@ -381,3 +392,27 @@ source .env.local && ./gradlew :transaction-service:bootRun
 - **Issue 2**: 입금/출금 요청 시 `403 Forbidden`.
   - **Cause**: `Authorization` 헤더에 JWT 토큰 문자열만 넣어야 하는데, JSON 응답 전체(`{"accessToken":...}`)를 넣음.
   - **Solution**: `curl` 및 `python` 파싱을 통해 `accessToken` 값만 정확히 추출하여 헤더에 주입.
+
+### 5. Service Communication (NATS & Istio)
+
+#### 🔴 NATS Connection Timeout
+- **Issue**: `account-service` 기동 시 `TimeoutException` 발생하며 CrashLoopBackOff.
+- **Cause**: GKE 환경에서 NATS 연결 초기화 지연(네트워크 레이턴시). 기본 타임아웃(2초) 부족.
+- **Solution**: `Options.builder().connectionTimeout(Duration.ofSeconds(10))`로 타임아웃 10초로 증가.
+
+#### 🔴 Istio Protocol Detection (NATS)
+- **Issue**: NATS 연결은 되지만 메시지 발행/구독 불가 또는 연결 끊김.
+- **Cause**: Istio가 Service Port 이름(`client`)만 보고 HTTP로 오판단하여 프로토콜 스니핑 오류 발생.
+- **Solution**: Service Port 이름을 `tcp-client`로 변경하여 TCP 프로토콜임을 명시 (`appProtocol` 또는 접두사 사용).
+
+### 6. Business Logic (SAGA)
+
+#### 🔴 Balance Not Updating
+- **Issue**: 트랜잭션이 `SUCCESS`로 완료되었으나 잔액이 0원으로 유지됨.
+- **Cause**: `TransactionResultSubscriber`가 트랜잭션 성공 이벤트를 수신하고 상태(`TransactionRecord`)만 업데이트하고, 실제 계좌 잔액(`Account`) 업데이트 로직이 누락됨.
+- **Solution**: 이벤트 수신 시 `AccountRepository`를 통해 잔액을 업데이트하는 로직 추가 (`newBalance` 반영).
+
+#### 🔴 Account Details Not Accessible
+- **Issue**: 잔액 확인을 위해 `GET /account` 호출 시 `405 Method Not Allowed`.
+- **Cause**: `AccountController`에 조회용 GET 엔드포인트가 구현되지 않음.
+- **Solution**: `GET /account` 엔드포인트 및 서비스 로직 추가.
