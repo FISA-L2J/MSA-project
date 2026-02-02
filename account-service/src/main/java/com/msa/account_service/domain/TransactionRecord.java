@@ -19,6 +19,9 @@ public class TransactionRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column
+    private Long transactionId;
+
     private String userId;
     private BigDecimal amount;
     private String type; // DEPOSIT, WITHDRAWAL
@@ -42,5 +45,9 @@ public class TransactionRecord {
     public void updateStatus(Status status) {
         this.status = status;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setTransactionId(Long transactionId) {
+        this.transactionId = transactionId;
     }
 }

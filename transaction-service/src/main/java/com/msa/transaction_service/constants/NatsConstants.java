@@ -1,8 +1,12 @@
 package com.msa.transaction_service.constants;
 
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor
 public final class NatsConstants {
-    private NatsConstants() {
-    }
+
+    public static final String TYPE_DEPOSIT = "deposit";
+    public static final String TYPE_WITHDRAWAL = "withdrawal";
 
     // Request subjects
     public static final String DEPOSIT = "transaction.deposit";

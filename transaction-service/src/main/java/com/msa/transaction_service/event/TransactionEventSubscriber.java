@@ -6,14 +6,21 @@ import com.msa.transaction_service.domain.Status;
 import com.msa.transaction_service.dto.TransactionProcessRequest;
 import com.msa.transaction_service.dto.TransactionProcessResponse;
 import com.msa.transaction_service.exception.InsufficientBalanceException;
+import com.msa.transaction_service.repository.TransactionRepository;
 import com.msa.transaction_service.service.TransactionService;
 import io.nats.client.*;
+import io.nats.client.api.ConsumerConfiguration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Component
@@ -25,26 +32,72 @@ public class TransactionEventSubscriber implements CommandLineRunner {
     private final ObjectMapper objectMapper;
     private final TransactionService transactionService;
     private final TransactionResultPublisher resultPublisher;
+    private final TransactionRepository transactionRepository;
+
+    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     @Override
     public void run(String... args) throws Exception {
         JetStream js = natsConnection.jetStream();
         JetStreamManagement jsm = natsConnection.jetStreamManagement();
-        Dispatcher dispatcher = natsConnection.createDispatcher();
 
         waitForStream(jsm);
 
-        js.subscribe(NatsConstants.DEPOSIT, dispatcher, this::handleDeposit, false);
-        log.info("Subscribed to {}", NatsConstants.DEPOSIT);
+        PullSubscribeOptions depositOptions = PullSubscribeOptions.builder()
+                .durable("deposit-consumer")
+                .configuration(ConsumerConfiguration.builder()
+                        .maxDeliver(3)
+                        .build())
+                .build();
 
-        js.subscribe(NatsConstants.WITHDRAWAL, dispatcher, this::handleWithdrawal, false);
-        log.info("Subscribed to {}", NatsConstants.WITHDRAWAL);
+        PullSubscribeOptions withdrawalOptions = PullSubscribeOptions.builder()
+                .durable("withdrawal-consumer")
+                .configuration(ConsumerConfiguration.builder()
+                        .maxDeliver(3)
+                        .build())
+                .build();
+
+        JetStreamSubscription depositSub = js.subscribe(NatsConstants.DEPOSIT, depositOptions);
+        JetStreamSubscription withdrawalSub = js.subscribe(NatsConstants.WITHDRAWAL, withdrawalOptions);
+
+        executorService.submit(() -> pollMessages(depositSub, NatsConstants.TYPE_DEPOSIT));
+        executorService.submit(() -> pollMessages(withdrawalSub, NatsConstants.TYPE_WITHDRAWAL));
+
+        log.info("Started Pull subscribers for deposit and withdrawal");
+    }
+
+    private void pollMessages(JetStreamSubscription subscription, String type) {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                List<Message> messages = subscription.fetch(10, Duration.ofSeconds(1));
+
+                for (Message msg : messages) {
+                    if (NatsConstants.TYPE_DEPOSIT.equals(type)) {
+                        handleDeposit(msg);
+                    } else {
+                        handleWithdrawal(msg);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error polling messages for {}", type, e);
+                if (e instanceof JetStreamStatusException) {
+                    break;
+                }
+            }
+        }
     }
 
     private void handleDeposit(Message msg) {
         try {
             TransactionProcessRequest request = objectMapper.readValue(
                     msg.getData(), TransactionProcessRequest.class);
+
+            if (transactionRepository.existsByRecordId(request.getRecordId())) {
+                log.warn("Duplicate deposit detected: recordId={}", request.getRecordId());
+                msg.ack();
+                return;
+            }
+
             log.info("Received deposit event for userId: {}", request.getUserId());
 
             TransactionProcessResponse response = transactionService.processDeposit(request);
@@ -62,6 +115,13 @@ public class TransactionEventSubscriber implements CommandLineRunner {
         try {
             request = objectMapper.readValue(
                     msg.getData(), TransactionProcessRequest.class);
+
+            if (transactionRepository.existsByRecordId(request.getRecordId())) {
+                log.warn("Duplicate withdrawal detected: recordId={}", request.getRecordId());
+                msg.ack();
+                return;
+            }
+
             log.info("Received withdrawal event for userId: {}", request.getUserId());
 
             TransactionProcessResponse response = transactionService.processWithdrawal(request);
