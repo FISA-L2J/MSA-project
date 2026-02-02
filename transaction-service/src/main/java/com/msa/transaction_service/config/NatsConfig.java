@@ -14,6 +14,10 @@ public class NatsConfig {
 
     @Bean
     public Connection natsConnection() throws Exception {
-        return Nats.connect(natsUrl);
+        io.nats.client.Options options = io.nats.client.Options.builder()
+                .server(natsUrl)
+                .connectionTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+        return Nats.connect(options);
     }
 }
