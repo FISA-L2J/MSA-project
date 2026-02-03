@@ -1,6 +1,26 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: grafana-dashboards-provider
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: grafana
+data:
+  dashboard.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-datasources
   namespace: istio-system
   labels:
@@ -57,11 +77,23 @@ spec:
             - mountPath: /etc/grafana/provisioning/datasources
               name: grafana-datasources
               readOnly: false
+            - mountPath: /etc/grafana/provisioning/dashboards
+              name: grafana-dashboards-provider
+              readOnly: false
+            - mountPath: /var/lib/grafana/dashboards
+              name: istio-dashboard-json
+              readOnly: false
       volumes:
         - name: grafana-datasources
           configMap:
             defaultMode: 420
             name: grafana-datasources
+        - name: grafana-dashboards-provider
+          configMap:
+            name: grafana-dashboards-provider
+        - name: istio-dashboard-json
+          configMap:
+            name: istio-dashboard-json
 ---
 apiVersion: v1
 kind: Service
